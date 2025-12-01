@@ -2,8 +2,24 @@
 
 import Link from "next/link";
 import { Music2, Headphones, Radio, Mic2, TrendingUp, Play } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Loader from "@/components/Loader";
+
 
 export default function Home() {
+  const {loading ,user} = useAuth()
+  const router = useRouter()
+  useEffect(()=>{
+    if(!loading && user){
+      router.push('/home')
+    }
+  },[loading, user, router])
+
+  if(loading){
+    return <Loader></Loader>
+  }
   return (
     <div className="min-h-screen bg-primary">
       {/* Hero Section */}

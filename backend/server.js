@@ -3,6 +3,9 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDatabase = require('./config/database');
 const errorHandler = require('./middleware/errorHandler');
+const fileUpload = require('express-fileupload');
+
+
 
 // Load environment variables
 dotenv.config();
@@ -16,7 +19,10 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
+app.use(fileUpload({
+    useTempFiles: true,
+    tempFileDir: '/tmp/',
+}));
 // CORS configuration
 app.use(
   cors({
@@ -27,7 +33,7 @@ app.use(
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
-
+app.use('/api/songs', require('./routes/songRoutes'));
 // Health check route
 app.get('/api/health', (req, res) => {
   res.status(200).json({

@@ -213,50 +213,109 @@ class SongService {
         }
     }
 
+    // add song to playlist
+
+    async addToRecentlyPlayed(userId, songId) {
+        try {
+            await User.findByIdAndUpdate(
+                userId,
+                {
+                    $pull: { recentlyPlayed: songId },   // Remove if exists (avoid duplicates)
+                }
+            );
+
+            await User.findByIdAndUpdate(
+                userId,
+                {
+                    $push: {
+                        recentlyPlayed: {
+                            $each: [songId],
+                            $position: 0,   // Insert at the top
+                        },
+                    },
+                }
+            );
+
+            // Optional: limit recent list to last 20 songs
+            await User.findByIdAndUpdate(
+                userId,
+                {
+                    $push: {
+                        recentlyPlayed: {
+                            $each: [],
+                            $slice: 20,
+                        },
+                    },
+                }
+            );
+        } catch (err) {
+            console.error("Failed to update recently played:", err);
+        }
+    }
+
+// get recently played songs
+
+async  getRecentlyPlayed(userId, limit = 20) {
+    if (!userId) throw new Error("userId is required");
+
+    // Fetch user and populate recentlyPlayed songs
+    const user = await User.findById(userId)
+        .populate({
+            path: "recentlyPlayed",
+            options: { sort: { _id: -1 }, limit }, // optional: latest songs first
+        })
+        .lean();
+
+    if (!user) throw new Error("User not found");
+
+    return user.recentlyPlayed;
+}
+
+
     /**
      * Get trending songs
      */
     async getTrendingSongs(limit = 10) {
-        try {
-            const songs = await Song.find({ isPublic: true })
-                .populate('uploadedBy', 'name email profileImage')
-                .sort('-plays -createdAt')
-                .limit(limit)
-                .lean();
+    try {
+        const songs = await Song.find({ isPublic: true })
+            .populate('uploadedBy', 'name email profileImage')
+            .sort('-plays -createdAt')
+            .limit(limit)
+            .lean();
 
-            return songs;
-        } catch (error) {
-            throw new Error(`Failed to get trending songs: ${error.message}`);
-        }
+        return songs;
+    } catch (error) {
+        throw new Error(`Failed to get trending songs: ${error.message}`);
     }
+}
 
     /**
      * Get recommended songs based on user preferences
      */
     async getRecommendedSongs(userId, limit = 10) {
-        try {
-            const user = await User.findById(userId).populate('likedSongs');
+    try {
+        const user = await User.findById(userId).populate('likedSongs');
 
-            // Get genres from liked songs
-            const likedGenres = user.likedSongs.map(song => song.genre);
-            const uniqueGenres = [...new Set(likedGenres)];
+        // Get genres from liked songs
+        const likedGenres = user.likedSongs.map(song => song.genre);
+        const uniqueGenres = [...new Set(likedGenres)];
 
-            // Find songs in same genres
-            const songs = await Song.find({
-                isPublic: true,
-                genre: { $in: uniqueGenres },
-                _id: { $nin: user.likedSongs.map(s => s._id) },
-            })
-                .populate('uploadedBy', 'name email profileImage')
-                .sort('-plays')
-                .limit(limit)
-                .lean();
+        // Find songs in same genres
+        const songs = await Song.find({
+            isPublic: true,
+            genre: { $in: uniqueGenres },
+            _id: { $nin: user.likedSongs.map(s => s._id) },
+        })
+            .populate('uploadedBy', 'name email profileImage')
+            .sort('-plays')
+            .limit(limit)
+            .lean();
 
-            return songs;
-        } catch (error) {
-            throw new Error(`Failed to get recommended songs: ${error.message}`);
-        }
+        return songs;
+    } catch (error) {
+        throw new Error(`Failed to get recommended songs: ${error.message}`);
     }
+}
 }
 
 module.exports = new SongService();

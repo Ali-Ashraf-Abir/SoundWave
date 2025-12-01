@@ -5,7 +5,7 @@ import { Music2, Headphones, Radio, Mic2, TrendingUp, Play } from "lucide-react"
 import { useAuth } from "@/context/AuthContext";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Loader from "@/components/Loader";
+import Loader from "@/components/loader/Loader";
 
 
 export default function Home() {

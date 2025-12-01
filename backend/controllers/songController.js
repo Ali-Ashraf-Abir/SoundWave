@@ -2,6 +2,7 @@ const songService = require('../services/songService');
 const asyncHandler = require('express-async-handler');
 const hlsService = require('../services/hlsService');
 const cloudinaryService = require('../services/cloudinaryService');
+const User = require('../models/User');
 // @desc    Upload a new song
 // @route   POST /api/songs
 // @access  Private
@@ -110,6 +111,26 @@ exports.getRecommendedSongs = asyncHandler(async (req, res) => {
     });
 });
 
+exports.getRecentlyPlayed = asyncHandler(async (req, res) => {
+    const userId = req.params.userid;
+
+    if (!userId) {
+        return res.status(400).json({ error: "userId is required" });
+    }
+
+    try {
+        const recentlyPlayed = await songService.getRecentlyPlayed(userId);
+
+        res.json({
+            success: true,
+            recentlyPlayed, // array of Song objects
+        });
+    } catch (err) {
+        console.error("Failed to get recently played songs:", err);
+        res.status(500).json({ error: err.message || "Failed to get recently played songs" });
+    }
+});
+
 // @desc    Update song
 // @route   PUT /api/songs/:id
 // @access  Private
@@ -145,14 +166,39 @@ exports.deleteSong = asyncHandler(async (req, res) => {
 // @route   GET /api/songs/:id/stream
 // @access  Public
 exports.streamSong = asyncHandler(async (req, res) => {
-    const song = await songService.getSongById(req.params.id);
-    const quality = req.query.quality || 'high';
+    const songId = req.params.id;
+    const userId = req.params.userid;
+    const quality = req.query.quality || "high";
 
-    // Get HLS URL from Cloudinary
+    if (!songId || !userId) {
+        return res.status(400).json({ error: "songId and userId are required" });
+    }
+
+    // Fetch song
+    const song = await songService.getSongById(songId);
+
+    // Fetch user
+    const user = await User.findById(userId); // <-- Use User model, NOT songService
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // 1️ Prepare streaming URL
     const hlsUrl = cloudinaryService.getStreamingUrl(song.cloudinaryId, quality);
-    
-    // Redirect to Cloudinary's HLS stream
-    res.redirect(hlsUrl);
+
+    // 2️ Send response immediately
+    res.json({
+        success: true,
+        streamUrl: hlsUrl,
+        song: {
+            id: song._id,
+            title: song.title,
+            artist: song.artist,
+            coverImage: song.coverImage,
+            duration: song.duration,
+        },
+    });
+
+    songService.incrementPlayCount(songId).catch(console.error);
+    songService.addToRecentlyPlayed(user, songId).catch(console.error);
 });
 
 exports.streamSongHLS = asyncHandler(async (req, res) => {
@@ -169,7 +215,7 @@ exports.streamSongHLS = asyncHandler(async (req, res) => {
 
         // Serve the m3u8 playlist
         const playlist = await fs.promises.readFile(playlistPath, 'utf-8');
-        
+
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.send(playlist);
@@ -190,7 +236,7 @@ exports.getHLSSegment = asyncHandler(async (req, res) => {
 
     try {
         const segmentData = await fs.promises.readFile(segmentPath);
-        
+
         res.setHeader('Content-Type', 'video/mp2t');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.send(segmentData);

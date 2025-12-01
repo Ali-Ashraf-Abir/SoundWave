@@ -7,6 +7,7 @@ export interface Song {
   duration: string;
   color: string;
   audioUrl: string;
+  coverImage: string;
 }
 
 export interface Playlist {

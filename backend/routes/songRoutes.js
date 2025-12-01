@@ -10,7 +10,8 @@ const {
   deleteSong,
   streamSong,
   streamSongHLS,
-  getHLSSegment
+  getHLSSegment,
+  getRecentlyPlayed
 } = require('../controllers/songController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -26,8 +27,8 @@ router.route('/:id')
   .put(protect, updateSong)
   .delete(protect, deleteSong);
 
-router.get('/:id/stream', streamSong);
+router.get('/:id/:userid/stream', streamSong);
 router.get('/:id/stream.m3u8', streamSongHLS);
 router.get('/:id/hls/:segment', getHLSSegment);
-
+router.get("/user/:userid/recently-played", getRecentlyPlayed);
 module.exports = router;

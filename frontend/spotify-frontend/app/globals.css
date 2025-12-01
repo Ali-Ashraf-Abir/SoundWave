@@ -7,34 +7,34 @@
   --color-primary: #1DB954;
   --color-primary-hover: #1ed760;
   --color-primary-dark: #169c46;
-  
+
   /* Background Colors */
   --color-bg-primary: #121212;
   --color-bg-secondary: #181818;
   --color-bg-tertiary: #282828;
   --color-bg-elevated: #2A2A2A;
-  
+
   /* Text Colors */
   --color-text-primary: #FFFFFF;
   --color-text-secondary: #B3B3B3;
   --color-text-muted: #6A6A6A;
-  
+
   /* Border & Divider */
   --color-border: #404040;
   --color-divider: #2A2A2A;
-  
+
   /* Status Colors */
   --color-error: #E22134;
   --color-warning: #FFA500;
   --color-success: #1DB954;
   --color-info: #3B82F6;
-  
+
   /* Shadows */
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
   --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
-  
+
   /* Gradients */
   --gradient-primary: linear-gradient(135deg, #1DB954 0%, #169c46 100%);
   --gradient-dark: linear-gradient(180deg, #282828 0%, #121212 100%);
@@ -44,119 +44,185 @@
   --color-bg-button: #1DB954;
 }
 
+@keyframes eq1 {
+  0% {
+    height: 4px;
+  }
+
+  50% {
+    height: 16px;
+  }
+
+  100% {
+    height: 4px;
+  }
+}
+
+@keyframes eq2 {
+  0% {
+    height: 12px;
+  }
+
+  50% {
+    height: 4px;
+  }
+
+  100% {
+    height: 12px;
+  }
+}
+
+@keyframes eq3 {
+  0% {
+    height: 6px;
+  }
+
+  50% {
+    height: 12px;
+  }
+
+  100% {
+    height: 6px;
+  }
+}
+
+.animate-eq1 {
+  animation: eq1 0.9s ease-in-out infinite;
+}
+
+.animate-eq2 {
+  animation: eq2 0.8s ease-in-out infinite;
+}
+
+.animate-eq3 {
+  animation: eq3 0.85s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+.animate-bounce { animation: bounce 0.6s infinite ease-in-out; }
+.delay-0 { animation-delay: 0s; }
+.delay-150 { animation-delay: 0.15s; }
+.delay-300 { animation-delay: 0.3s; }
+
 @layer base {
   * {
     @apply border-border;
   }
-  
+
   body {
     @apply bg-bg-primary text-text-primary antialiased;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
-  
-  input, textarea {
+
+  input,
+  textarea {
     @apply bg-bg-elevated text-text-primary;
   }
-  
+
   button {
     @apply transition-all duration-200 ease-in-out;
   }
 }
 
 @layer utilities {
+
   /* Background utilities */
   .bg-primary {
     background-color: var(--color-bg-primary);
   }
-  
+
   .bg-secondary {
     background-color: var(--color-bg-secondary);
   }
-  
+
   .bg-tertiary {
     background-color: var(--color-bg-tertiary);
   }
-  
+
   .bg-elevated {
     background-color: var(--color-bg-elevated);
   }
-  
+
   /* Text utilities */
   .text-primary {
     color: var(--color-text-primary);
   }
-  
+
   .text-secondary {
     color: var(--color-text-secondary);
   }
-  
+
   .text-muted {
     color: var(--color-text-muted);
   }
-  
+
   /* Brand color utilities */
   .bg-brand {
     background-color: var(--color-primary);
   }
-  
+
   .bg-brand-hover {
     background-color: var(--color-primary-hover);
   }
-  
+
   .text-brand {
     color: var(--color-primary);
   }
-  
+
   /* Border utilities */
   .border-default {
     border-color: var(--color-border);
   }
-  
+
   /* Shadow utilities */
   .shadow-custom-sm {
     box-shadow: var(--shadow-sm);
   }
-  
+
   .shadow-custom-md {
     box-shadow: var(--shadow-md);
   }
-  
+
   .shadow-custom-lg {
     box-shadow: var(--shadow-lg);
   }
-  
+
   .shadow-custom-xl {
     box-shadow: var(--shadow-xl);
   }
-  
+
   /* Gradient utilities */
   .gradient-primary {
     background: var(--gradient-primary);
   }
-  
+
   .gradient-dark {
     background: var(--gradient-dark);
   }
-  
+
   .bg-button {
     background-color: var(--color-bg-button);
   }
+
   /* Glassmorphism effect */
   .glass {
     background: rgba(40, 40, 40, 0.7);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
   }
-  
+
   /* Hover effects */
   .hover-lift {
     @apply transition-transform duration-200;
   }
-  
+
   .hover-lift:hover {
     transform: translateY(-2px);
   }
-  
+
   /* Focus styles */
   .focus-brand {
     @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-bg-primary;

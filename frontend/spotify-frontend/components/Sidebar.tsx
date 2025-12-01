@@ -39,7 +39,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, setShowU
       >
         <div className="p-6 flex items-center justify-between">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent">
-            MusicStream
+            SoundWave
           </h1>
           <button 
             onClick={onClose}

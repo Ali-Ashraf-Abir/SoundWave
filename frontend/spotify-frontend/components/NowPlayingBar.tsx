@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Music, Heart, Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, MoreHorizontal, Volume2, VolumeX } from 'lucide-react';
+import { Music, Heart, Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, MoreHorizontal, Volume2, VolumeX, Loader } from 'lucide-react';
 import { Song } from '../types';
 
 interface NowPlayingBarProps {
-  currentSong: Song | null;
+  currentSong: any | null;
   isPlaying: boolean;
+  isLoading: boolean; // 👈 ADD THIS
   currentTime: number;
   duration: number;
   likedSongs: Set<number>;
@@ -23,15 +24,16 @@ const formatTime = (seconds: number): string => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
-const NowPlayingBar: React.FC<NowPlayingBarProps> = ({ 
-  currentSong, 
-  isPlaying, 
+const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
+  currentSong,
+  isPlaying,
   currentTime,
   duration,
-  likedSongs, 
+  likedSongs,
   onToggleLike,
   onTogglePlayPause,
   onSeek,
+  isLoading,
   onVolumeChange
 }) => {
   const [volume, setVolume] = useState(0.75);
@@ -90,14 +92,14 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
   };
 
   return (
-    <div 
-      className="fixed bottom-0 left-0 right-0 border-t" 
+    <div
+      className="fixed bottom-0 left-0 right-0 border-t"
       style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }}
     >
       {/* Mobile Layout */}
       <div className="block sm:hidden">
         {/* Progress Bar */}
-        <div 
+        <div
           className="w-full h-1 bg-tertiary cursor-pointer"
           onClick={handleProgressClick}
           onMouseDown={() => setIsDraggingProgress(true)}
@@ -105,12 +107,12 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
           onMouseUp={() => setIsDraggingProgress(false)}
           onMouseLeave={() => setIsDraggingProgress(false)}
         >
-          <div 
-            className="h-full bg-button transition-all" 
+          <div
+            className="h-full bg-button transition-all"
             style={{ width: `${progress}%` }}
           ></div>
         </div>
-        
+
         {/* Main Controls */}
         <div className="flex items-center justify-between px-3 py-2">
           {/* Song Info */}
@@ -126,7 +128,7 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
 
           {/* Controls */}
           <div className="flex items-center gap-3 flex-shrink-0">
-            <button 
+            <button
               onClick={() => onToggleLike(currentSong.id)}
               className="flex-shrink-0"
             >
@@ -143,7 +145,15 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
               onClick={onTogglePlayPause}
               className="w-10 h-10 rounded-full bg-button hover:bg-brand-hover transition-all flex items-center justify-center flex-shrink-0"
             >
-              {isPlaying ? <Pause fill="currentColor" size={18} /> : <Play fill="currentColor" size={18} />}
+              {!isLoading && isPlaying ? <Pause fill="currentColor" size={18} /> : <Play fill="currentColor" size={18} />}
+              {isLoading && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 rounded flex items-center justify-center space-x-1">
+                  <span className="w-1 h-3 bg-white rounded animate-bounce delay-0"></span>
+                  <span className="w-1 h-3 bg-white rounded animate-bounce delay-150"></span>
+                  <span className="w-1 h-3 bg-white rounded animate-bounce delay-300"></span>
+                </div>
+              )}
+
             </button>
             <button className="text-secondary hover:text-primary transition-all flex-shrink-0">
               <SkipForward size={20} />
@@ -153,7 +163,7 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
       </div>
 
       {/* Tablet & Desktop Layout */}
-      <div className="hidden sm:flex items-center px-4 py-3 gap-4">
+      <div className="hidden sm:flex items-center px-4 py-3 gap-4 sm:pl-0 lg:pl-64">
         {/* Song Info - Left */}
         <div className="flex items-center gap-3 w-80 min-w-0">
           <div className={`w-14 h-14 bg-gradient-to-br ${currentSong.color} rounded flex items-center justify-center flex-shrink-0`}>
@@ -185,7 +195,14 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
               onClick={onTogglePlayPause}
               className="w-10 h-10 rounded-full bg-button hover:bg-brand-hover transition-all flex items-center justify-center"
             >
-              {isPlaying ? <Pause fill="currentColor" size={20} /> : <Play fill="currentColor" size={20} />}
+              {isLoading ?
+                <div className="absolute inset-0 bg-black bg-opacity-50 rounded flex items-center justify-center space-x-1 pl-64">
+                  <span className="w-1 h-3 bg-white rounded animate-bounce delay-0"></span>
+                  <span className="w-1 h-3 bg-white rounded animate-bounce delay-150"></span>
+                  <span className="w-1 h-3 bg-white rounded animate-bounce delay-300"></span>
+                </div>
+               : !isLoading && isPlaying ? <Pause fill="currentColor" size={18} /> : <Play fill="currentColor" size={18} />}
+
             </button>
             <button className="text-secondary hover:text-primary transition-all">
               <SkipForward size={20} />
@@ -196,7 +213,7 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
           </div>
           <div className="w-full max-w-2xl flex items-center gap-2">
             <span className="text-xs text-secondary min-w-[40px] text-right">{formatTime(currentTime)}</span>
-            <div 
+            <div
               className="flex-1 h-1 bg-tertiary rounded-full overflow-hidden cursor-pointer hover:h-1.5 transition-all group"
               onClick={handleProgressClick}
               onMouseDown={() => setIsDraggingProgress(true)}
@@ -204,7 +221,7 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
               onMouseUp={() => setIsDraggingProgress(false)}
               onMouseLeave={() => setIsDraggingProgress(false)}
             >
-              <div 
+              <div
                 className="h-full bg-button rounded-full relative"
                 style={{ width: `${progress}%` }}
               >
@@ -223,7 +240,7 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
           <button onClick={toggleMute} className="text-secondary hover:text-primary transition-all">
             {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
           </button>
-          <div 
+          <div
             className="w-24 h-1 bg-tertiary rounded-full overflow-hidden cursor-pointer hover:h-1.5 transition-all group"
             onClick={handleVolumeClick}
             onMouseDown={() => setIsDraggingVolume(true)}
@@ -231,7 +248,7 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
             onMouseUp={() => setIsDraggingVolume(false)}
             onMouseLeave={() => setIsDraggingVolume(false)}
           >
-            <div 
+            <div
               className="h-full bg-button rounded-full relative"
               style={{ width: `${isMuted ? 0 : volume * 100}%` }}
             >

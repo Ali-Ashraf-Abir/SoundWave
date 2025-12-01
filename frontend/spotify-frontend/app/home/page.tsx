@@ -10,6 +10,9 @@ import SearchView from '@/components/views/SearchView';
 import { api } from '@/lib/api';
 import { Song, UploadFormData, ViewType } from '@/types';
 import React, { useEffect, useRef, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+
+// Add this loading state to your MusicApp component
 
 const MusicApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('home');
@@ -22,7 +25,8 @@ const MusicApp: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const {user}=useAuth()
   const audioRef = useRef<HTMLAudioElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
@@ -30,50 +34,147 @@ const MusicApp: React.FC = () => {
     console.log('Playing song:', song);
     setCurrentSong(song);
     setIsPlaying(true);
+    setIsLoading(true); 
   };
 
-  // Handle HLS streaming setup
   useEffect(() => {
     if (!audioRef.current || !currentSong) return;
 
     const audio = audioRef.current;
-    
-    // Your backend serves direct audio stream, not HLS
-    const directUrl = `${process.env.NEXT_PUBLIC_API_URL}/songs/${currentSong._id}/stream`;
-    
-    console.log('Loading audio from:', directUrl);
 
-    // Cleanup previous HLS instance if exists
-    if (hlsRef.current) {
-      console.log('Destroying previous HLS instance');
-      hlsRef.current.destroy();
-      hlsRef.current = null;
-    }
+    const setupHLS = async () => {
+      try {
+        setIsLoading(true); // 👈 ADD THIS - Start loading
 
-    // Reset audio element
-    audio.pause();
-    audio.src = '';
-    audio.currentTime = 0;
+        // Fetch HLS URL from your backend
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/songs/${currentSong._id}/${user?._id}/stream?quality=low`
+        );
 
-    // Set the direct stream URL
-    audio.src = directUrl;
-    audio.load(); // Important: explicitly load the new source
+        if (!response.ok) {
+          throw new Error('Failed to fetch stream URL');
+        }
 
-    // Auto-play when song changes
-    const playPromise = audio.play();
-    if (playPromise !== undefined) {
-      playPromise
-        .then(() => {
-          console.log('Playback started successfully');
-          setIsPlaying(true);
-        })
-        .catch(err => {
-          console.error('Playback failed:', err);
+        const data = await response.json();
+        const hlsUrl = data.streamUrl;
+
+        console.log('Loading Cloudinary HLS stream from:', hlsUrl);
+
+        // Cleanup previous HLS instance
+        if (hlsRef.current) {
+          console.log('Destroying previous HLS instance');
+          hlsRef.current.destroy();
+          hlsRef.current = null;
+        }
+
+        // Reset audio element
+        audio.pause();
+        audio.currentTime = 0;
+
+        // Check if HLS.js is supported
+        if (Hls.isSupported()) {
+          console.log('HLS.js is supported, initializing...');
+
+          const hls = new Hls({
+            debug: false,
+            enableWorker: true,
+            lowLatencyMode: false,
+            maxBufferLength: 20,
+            maxMaxBufferLength: 120,
+            maxBufferSize: 60 * 1000 * 1000,
+            maxBufferHole: 0.5,
+            startLevel: -1,
+          });
+
+          hlsRef.current = hls;
+
+          hls.attachMedia(audio);
+
+          hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+            console.log('HLS media attached');
+            hls.loadSource(hlsUrl);
+          });
+
+          hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+            console.log('HLS manifest parsed, levels:', data.levels.length);
+
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+              playPromise
+                .then(() => {
+                  console.log('HLS playback started successfully');
+                  setIsPlaying(true);
+                  setIsLoading(false); 
+                })
+                .catch(err => {
+                  console.error('HLS playback failed:', err);
+                  setIsPlaying(false);
+                  setIsLoading(false); 
+                });
+            }
+          });
+
+          hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
+            console.log('Quality level switched to:', data.level);
+          });
+
+          hls.on(Hls.Events.ERROR, (event, data) => {
+            console.error('HLS error:', data);
+
+            if (data.fatal) {
+              switch (data.type) {
+                case Hls.ErrorTypes.NETWORK_ERROR:
+                  console.error('Fatal network error, attempting recovery...');
+                  hls.startLoad();
+                  break;
+                case Hls.ErrorTypes.MEDIA_ERROR:
+                  console.error('Fatal media error, attempting recovery...');
+                  hls.recoverMediaError();
+                  break;
+                default:
+                  console.error('Fatal error, cannot recover');
+                  hls.destroy();
+                  setIsPlaying(false);
+                  setIsLoading(false); // 👈 ADD THIS - Stop loading on fatal error
+                  break;
+              }
+            }
+          });
+
+        } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+          console.log('Using native HLS support (Safari)');
+          audio.src = hlsUrl;
+          audio.load();
+
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                console.log('Native HLS playback started');
+                setIsPlaying(true);
+                setIsLoading(false); 
+              })
+              .catch(err => {
+                console.error('Native HLS playback failed:', err);
+                setIsPlaying(false);
+                setIsLoading(false); 
+              });
+          }
+        } else {
+          console.error('HLS is not supported in this browser');
           setIsPlaying(false);
-        });
-    }
+          setIsLoading(false); 
+        }
 
-    // Cleanup on unmount or song change
+      } catch (error) {
+        console.error('Error setting up HLS:', error);
+        setIsPlaying(false);
+        setIsLoading(false);  
+      }
+    };
+
+    setupHLS();
+
     return () => {
       if (hlsRef.current) {
         console.log('Cleaning up HLS instance');
@@ -92,43 +193,48 @@ const MusicApp: React.FC = () => {
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
     };
-    
+
     const handleLoadedMetadata = () => {
       console.log('Audio metadata loaded, duration:', audio.duration);
       setDuration(audio.duration);
     };
-    
+
     const handleEnded = () => {
       console.log('Audio ended');
       setIsPlaying(false);
     };
-    
+
     const handlePlay = () => {
       console.log('Audio play event');
       setIsPlaying(true);
+      setIsLoading(false); // 👈 ADD THIS - Ensure loading stops when playing
     };
-    
+
     const handlePause = () => {
       console.log('Audio pause event');
       setIsPlaying(false);
     };
-    
+
     const handleCanPlay = () => {
       console.log('Audio can play');
+      setIsLoading(false); // 👈 ADD THIS - Stop loading when ready
     };
-    
+
     const handleLoadStart = () => {
       console.log('Audio load start');
+      setIsLoading(true); // 👈 ADD THIS - Start loading
     };
-    
+
     const handleWaiting = () => {
       console.log('Audio waiting/buffering');
+      setIsLoading(true); // 👈 ADD THIS - Show loading during buffering
     };
-    
+
     const handlePlaying = () => {
       console.log('Audio playing (playback started after buffering)');
+      setIsLoading(false); // 👈 ADD THIS - Stop loading when actually playing
     };
-    
+
     const handleError = (e: Event) => {
       console.error('Audio element error:', e);
       if (audio.error) {
@@ -136,6 +242,7 @@ const MusicApp: React.FC = () => {
         console.error('Audio error message:', audio.error.message);
       }
       setIsPlaying(false);
+      setIsLoading(false); // 👈 ADD THIS
     };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
@@ -215,7 +322,7 @@ const MusicApp: React.FC = () => {
           />
 
           <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 sm:pb-28">
-            {currentView === 'home' && <HomeView onPlaySong={handlePlaySong} />}
+            {currentView === 'home' && <HomeView onPlaySong={handlePlaySong} currentSong={currentSong} />}
             {currentView === 'search' && (
               <SearchView
                 searchQuery={searchQuery}
@@ -229,12 +336,12 @@ const MusicApp: React.FC = () => {
         </div>
       </div>
 
-      {/* Audio element - always present */}
-      <audio ref={audioRef} preload="metadata" />
+      <audio ref={audioRef} preload="auto" />
 
       <NowPlayingBar
         currentSong={currentSong}
         isPlaying={isPlaying}
+        isLoading={isLoading} 
         currentTime={currentTime}
         duration={duration}
         likedSongs={likedSongs}

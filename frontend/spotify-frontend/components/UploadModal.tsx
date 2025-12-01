@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { Upload, X, Music, Image as ImageIcon, Loader2, CheckCircle } from 'lucide-react';
+import { Upload, X, Music, Image, Loader2, CheckCircle } from 'lucide-react';
 import { UploadFormData } from '../types';
-import { api } from '@/lib/api';
-
+import Cookies from 'js-cookie';
+import { useSong } from '@/context/SongContext';
 interface UploadModalProps {
   showUploadModal: boolean;
   setShowUploadModal: (show: boolean) => void;
@@ -22,23 +22,23 @@ const UploadModal: React.FC<UploadModalProps> = ({
 }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStage, setUploadStage] = useState<'uploading' | 'processing' | 'complete'>('uploading');
   const [error, setError] = useState<string | null>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
+  const {setNewUpload,newUpload} = useSong()
   if (!showUploadModal) return null;
 
   const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
       const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/flac'];
       if (!allowedTypes.includes(file.type)) {
         setError('Invalid audio format. Please use MP3, WAV, or FLAC');
         return;
       }
 
-      // Validate file size (50MB)
       if (file.size > 50 * 1024 * 1024) {
         setError('File too large. Maximum size is 50MB');
         return;
@@ -52,14 +52,12 @@ const UploadModal: React.FC<UploadModalProps> = ({
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
         setError('Invalid image format. Please use JPG, PNG, or WebP');
         return;
       }
 
-      // Validate file size (5MB)
       if (file.size > 5 * 1024 * 1024) {
         setError('Image too large. Maximum size is 5MB');
         return;
@@ -71,7 +69,6 @@ const UploadModal: React.FC<UploadModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    // Validate form
     if (!uploadForm.title || !uploadForm.artist) {
       setError('Please fill in title and artist');
       return;
@@ -85,9 +82,9 @@ const UploadModal: React.FC<UploadModalProps> = ({
     setUploading(true);
     setError(null);
     setUploadProgress(0);
+    setUploadStage('uploading');
 
     try {
-      // Create FormData
       const formData = new FormData();
       formData.append('title', uploadForm.title);
       formData.append('artist', uploadForm.artist);
@@ -99,53 +96,128 @@ const UploadModal: React.FC<UploadModalProps> = ({
         formData.append('coverImage', uploadForm.coverImage);
       }
 
-      // Upload to backend
-      const response = await api.post('/songs',formData)
+      // Get auth token from localStorage or your auth system
+      const token = Cookies.get('accessToken');
 
-      // Simulate progress (you can implement real progress tracking with XMLHttpRequest)
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
+      // Use XMLHttpRequest for progress tracking
+      const xhr = new XMLHttpRequest();
+      xhrRef.current = xhr;
+
+      // Track upload progress
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = Math.round((e.loaded / e.total) * 100);
+          setUploadProgress(percentComplete);
+          console.log(`Upload progress: ${percentComplete}%`);
+        }
+      });
+
+      // Handle completion
+      xhr.addEventListener('load', () => {
+        console.log('Server response received. Status:', xhr.status);
+        
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            console.log('Upload successful:', response);
+            
+            setUploadStage('complete');
+            setUploadProgress(100);
+            setNewUpload(!newUpload)
+            // Success! Close modal and reset
+            setTimeout(() => {
+              setShowUploadModal(false);
+              setUploadForm({ title: '', artist: '', album: '', audioFile: null, coverImage: null });
+              setUploading(false);
+              setUploadProgress(0);
+              setUploadStage('uploading');
+              onUpload();
+            }, 1500);
+          } catch (e) {
+            console.error('Failed to parse response:', e);
+            throw new Error('Invalid server response');
           }
-          return prev + 10;
-        });
-      }, 500);
+        } else {
+          let errorMessage = 'Upload failed';
+          try {
+            const errorData = JSON.parse(xhr.responseText);
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            errorMessage = `Server error: ${xhr.status}`;
+          }
+          throw new Error(errorMessage);
+        }
+      });
 
-      if (!response.success) {
-        const errorData = await response;
-        throw new Error(errorData.message || 'Upload failed');
-      }
-
-      clearInterval(progressInterval);
-      setUploadProgress(100);
-
-      const data = await response;
-      console.log('Upload successful:', data);
-
-      // Success! Close modal and reset form
-      setTimeout(() => {
-        setShowUploadModal(false);
-        setUploadForm({ title: '', artist: '', album: '', audioFile: null, coverImage: null });
+      // Handle errors
+      xhr.addEventListener('error', () => {
+        console.error('XHR network error');
+        setError('Network error occurred during upload');
         setUploading(false);
         setUploadProgress(0);
-        onUpload(); // Callback to refresh song list
-      }, 1000);
+        setUploadStage('uploading');
+      });
+
+      xhr.addEventListener('abort', () => {
+        console.log('Upload aborted by user');
+        setError('Upload cancelled');
+        setUploading(false);
+        setUploadProgress(0);
+        setUploadStage('uploading');
+      });
+
+      // When upload completes but server still processing, show processing stage
+      xhr.upload.addEventListener('load', () => {
+        if (xhr.readyState !== 4) {
+          setUploadStage('processing');
+          setUploadProgress(100);
+          console.log('Upload complete, waiting for server response...');
+        }
+      });
+
+      // Open connection and send
+      xhr.open('POST', `${process.env.NEXT_PUBLIC_API_URL}/songs`);
+      
+      // Set authorization header if needed
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+
+      xhr.send(formData);
 
     } catch (err) {
       console.error('Upload error:', err);
       setError(err instanceof Error ? err.message : 'Failed to upload song');
       setUploading(false);
       setUploadProgress(0);
+      setUploadStage('uploading');
     }
   };
 
   const handleClose = () => {
-    if (!uploading) {
-      setShowUploadModal(false);
-      setError(null);
-      setUploadProgress(0);
+    if (uploading) {
+      // Cancel ongoing upload
+      if (xhrRef.current) {
+        xhrRef.current.abort();
+      }
+    }
+    setShowUploadModal(false);
+    setError(null);
+    setUploadProgress(0);
+    setUploadStage('uploading');
+    setUploading(false);
+  };
+
+  const getProgressText = () => {
+    switch (uploadStage) {
+      case 'uploading':
+        return `Uploading... ${uploadProgress}%`;
+      case 'processing':
+        return 'Processing audio...';
+      case 'complete':
+        return 'Complete!';
+      default:
+        return 'Uploading...';
     }
   };
 
@@ -156,8 +228,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
           <h3 className="text-xl sm:text-2xl font-bold">Upload Song</h3>
           <button 
             onClick={handleClose}
-            disabled={uploading}
-            className="text-secondary hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-secondary hover:text-primary"
           >
             <X size={24} />
           </button>
@@ -170,7 +241,6 @@ const UploadModal: React.FC<UploadModalProps> = ({
         )}
 
         <div className="space-y-4">
-          {/* Song Title */}
           <div>
             <label className="block text-sm font-medium mb-2">
               Song Title <span className="text-red-500">*</span>
@@ -185,7 +255,6 @@ const UploadModal: React.FC<UploadModalProps> = ({
             />
           </div>
 
-          {/* Artist */}
           <div>
             <label className="block text-sm font-medium mb-2">
               Artist <span className="text-red-500">*</span>
@@ -200,7 +269,6 @@ const UploadModal: React.FC<UploadModalProps> = ({
             />
           </div>
 
-          {/* Album */}
           <div>
             <label className="block text-sm font-medium mb-2">Album</label>
             <input
@@ -213,7 +281,6 @@ const UploadModal: React.FC<UploadModalProps> = ({
             />
           </div>
 
-          {/* Genre */}
           <div>
             <label className="block text-sm font-medium mb-2">Genre</label>
             <select
@@ -234,7 +301,6 @@ const UploadModal: React.FC<UploadModalProps> = ({
             </select>
           </div>
 
-          {/* Audio File */}
           <div>
             <label className="block text-sm font-medium mb-2">
               Audio File <span className="text-red-500">*</span>
@@ -265,7 +331,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
                 </div>
               ) : (
                 <>
-                  <Upload size={28} className="sm:w-8 sm:h-8 mx-auto mb-2 text-secondary" />
+                  <Upload size={28} className="mx-auto mb-2 text-secondary" />
                   <p className="text-xs sm:text-sm text-secondary">Click to upload audio file</p>
                   <p className="text-xs text-muted mt-1">MP3, WAV, or FLAC (MAX. 50MB)</p>
                 </>
@@ -273,7 +339,6 @@ const UploadModal: React.FC<UploadModalProps> = ({
             </div>
           </div>
 
-          {/* Cover Image */}
           <div>
             <label className="block text-sm font-medium mb-2">Cover Image (Optional)</label>
             <input
@@ -290,7 +355,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
             >
               {uploadForm.coverImage ? (
                 <div className="flex items-center justify-center gap-2">
-                  <ImageIcon size={24} className="text-green-500" />
+                  <Image size={24} className="text-green-500" />
                   <div className="text-left">
                     <p className="text-sm font-medium text-primary">
                       {uploadForm.coverImage.name}
@@ -302,7 +367,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
                 </div>
               ) : (
                 <>
-                  <ImageIcon size={24} className="mx-auto mb-2 text-secondary" />
+                  <Image size={24} className="mx-auto mb-2 text-secondary" />
                   <p className="text-xs text-secondary">Click to upload cover image</p>
                   <p className="text-xs text-muted mt-1">JPG, PNG, or WebP (MAX. 5MB)</p>
                 </>
@@ -310,45 +375,49 @@ const UploadModal: React.FC<UploadModalProps> = ({
             </div>
           </div>
 
-          {/* Upload Progress */}
           {uploading && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-secondary">Uploading...</span>
-                <span className="text-primary font-semibold">{uploadProgress}%</span>
+                <span className="text-secondary">{getProgressText()}</span>
+                {uploadStage === 'uploading' && (
+                  <span className="text-primary font-semibold">{uploadProgress}%</span>
+                )}
               </div>
               <div className="w-full h-2 bg-elevated rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-green-500 to-green-600 transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
+                  className={`h-full transition-all duration-300 ${
+                    uploadStage === 'processing' 
+                      ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 animate-pulse' 
+                      : 'bg-gradient-to-r from-green-500 to-green-600'
+                  }`}
+                  style={{ width: uploadStage === 'processing' ? '100%' : `${uploadProgress}%` }}
                 />
               </div>
             </div>
           )}
 
-          {/* Action Buttons */}
           <div className="flex gap-3 pt-4">
             <button
               onClick={handleClose}
-              disabled={uploading}
+              disabled={uploadStage === 'processing'}
               className="flex-1 px-4 py-2 rounded-full border border-default text-secondary hover:text-primary hover:border-primary transition-all text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Cancel
+              {uploading ? 'Cancel' : 'Close'}
             </button>
             <button
               onClick={handleSubmit}
               disabled={uploading || !uploadForm.title || !uploadForm.artist || !uploadForm.audioFile}
               className="flex-1 px-4 py-2 rounded-full bg-button hover:bg-brand-hover transition-all font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {uploading ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  Uploading...
-                </>
-              ) : uploadProgress === 100 ? (
+              {uploadStage === 'complete' ? (
                 <>
                   <CheckCircle size={18} />
                   Done!
+                </>
+              ) : uploading ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  {uploadStage === 'processing' ? 'Processing...' : `${uploadProgress}%`}
                 </>
               ) : (
                 'Upload'

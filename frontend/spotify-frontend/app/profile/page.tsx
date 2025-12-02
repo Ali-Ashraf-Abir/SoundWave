@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { updateProfile, changePassword, deleteAccount } from "@/lib/auth";
 import { User, Mail, Camera, Lock, LogOut, Trash2, Save, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import Link from "next/link";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -108,6 +109,7 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="bg-secondary border-b border-divider">
         <div className="max-w-4xl mx-auto px-4 py-6 flex items-center justify-between">
+          <Link href='/home'><h1 className="text-xl font-bold text-brand cursor-pointer">Home</h1></Link>
           <h1 className="text-2xl font-bold text-primary">Account Settings</h1>
           <button
             onClick={() => {

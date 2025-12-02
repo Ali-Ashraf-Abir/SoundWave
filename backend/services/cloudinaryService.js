@@ -89,31 +89,75 @@ class CloudinaryService {
     }
 
     /**
-     * Get streaming URL with adaptive quality
+     * Get streaming URL with adaptive quality and FAST startup
+     * Uses direct MP3 URL instead of HLS for instant playback
      */
     getStreamingUrl(publicId, quality = 'high') {
         const qualitySettings = {
-            low: { audio_codec: 'aac', audio_frequency: 22050, bit_rate: '64k' },
-            medium: { audio_codec: 'aac', audio_frequency: 44100, bit_rate: '128k' },
-            high: { audio_codec: 'aac', audio_frequency: 44100, bit_rate: '192k' },
+            low: { bit_rate: '96k' },
+            medium: { bit_rate: '128k' },
+            high: { bit_rate: '192k' },
+            ultra: { bit_rate: '320k' },
         };
 
         const settings = qualitySettings[quality] || qualitySettings.high;
 
-        const hlsUrl = cloudinary.url(publicId, {
-            resource_type: 'video', // Cloudinary streams audio via 'video'
-            streaming_profile: 'sd', // faster startup
-            format: 'm3u8',
+        // Use direct MP3 URL with streaming optimization
+        // This allows browser to start playing immediately with small chunks
+        const streamUrl = cloudinary.url(publicId, {
+            resource_type: 'video',
+            format: 'mp3',
+            flags: 'streaming_attachment', // Optimized for streaming
             transformation: [
                 {
-                    audio_codec: settings.audio_codec,
-                    audio_frequency: settings.audio_frequency,
+                    audio_codec: 'mp3',
                     bit_rate: settings.bit_rate,
                 },
             ],
         });
 
+        return streamUrl;
+    }
+
+    /**
+     * Get HLS streaming URL for adaptive quality (alternative)
+     * With optimized segment size for faster startup
+     */
+    getHLSStreamingUrl(publicId, quality = 'high') {
+        const qualitySettings = {
+            low: { bit_rate: '96k' },
+            medium: { bit_rate: '128k' },
+            high: { bit_rate: '192k' },
+        };
+
+        const settings = qualitySettings[quality] || qualitySettings.high;
+
+        // HLS with smaller segment size (2 seconds instead of default 10)
+        const hlsUrl = cloudinary.url(publicId, {
+            resource_type: 'video',
+            format: 'm3u8',
+            streaming_profile: 'hd', // Better for quick startup
+            transformation: [
+                {
+                    audio_codec: 'aac',
+                    bit_rate: settings.bit_rate,
+                    // Smaller segments for faster startup
+                    flags: 'splice:2', // 2-second segments
+                },
+            ],
+        });
+
         return hlsUrl;
+    }
+
+    /**
+     * Get both streaming URLs (MP3 for instant start, HLS for adaptive)
+     */
+    getAllStreamingUrls(publicId, quality = 'high') {
+        return {
+            mp3: this.getStreamingUrl(publicId, quality),
+            hls: this.getHLSStreamingUrl(publicId, quality),
+        };
     }
 
     /**
@@ -131,7 +175,5 @@ class CloudinaryService {
         }
     }
 }
-
-
 
 module.exports = new CloudinaryService();

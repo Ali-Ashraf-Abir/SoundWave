@@ -3,6 +3,7 @@
 import React from 'react';
 import { Search, User, Menu } from 'lucide-react';
 import { ViewType } from '../types';
+import Link from 'next/link';
 
 interface HeaderProps {
   currentView: ViewType;
@@ -15,13 +16,13 @@ const Header: React.FC<HeaderProps> = ({ currentView, searchQuery, setSearchQuer
   return (
     <div className="sticky top-0 z-10 glass px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
       <div className="flex items-center gap-2">
-        <button 
+        <button
           onClick={onMenuClick}
           className="lg:hidden w-10 h-10 rounded-full bg-elevated flex items-center justify-center text-secondary hover:text-primary transition-all"
         >
           <Menu size={24} />
         </button>
-        
+
         <div className="hidden sm:flex gap-2">
           <button className="w-8 h-8 rounded-full bg-elevated flex items-center justify-center text-secondary hover:text-primary transition-all">
             ←
@@ -31,7 +32,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, searchQuery, setSearchQuer
           </button>
         </div>
       </div>
-      
+
       {currentView === 'search' && (
         <div className="flex-1 max-w-md">
           <div className="relative">
@@ -46,10 +47,11 @@ const Header: React.FC<HeaderProps> = ({ currentView, searchQuery, setSearchQuer
           </div>
         </div>
       )}
-      
-      <button className="w-10 h-10 rounded-full bg-elevated flex items-center justify-center hover:scale-105 transition-all flex-shrink-0">
-        <User size={20} />
-      </button>
+
+      <Link href='/profile'>
+        <button className="w-10 h-10 rounded-full bg-elevated flex items-center justify-center hover:scale-105 transition-all flex-shrink-0">
+          <User size={20} />
+        </button></Link>
     </div>
   );
 };

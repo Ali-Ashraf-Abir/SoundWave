@@ -139,29 +139,30 @@ class SongService {
     async updateSong(songId, updateData, userId, coverImageFile) {
         try {
             const song = await Song.findById(songId);
+            if (!song) throw new Error('Song not found');
 
-            if (!song) {
-                throw new Error('Song not found');
-            }
-
-            // Check if user owns the song
+            // Authorization
             if (song.uploadedBy.toString() !== userId.toString()) {
                 throw new Error('Not authorized to update this song');
             }
-
-            // Update cover image if provided
+            console.log(coverImageFile)
+            // --- Update cover image ---
             if (coverImageFile) {
-                // Delete old cover image if exists
-                if (song.coverImageId) {
-                    await cloudinaryService.deleteFile(song.coverImageId, 'image');
-                }
+                // Upload image from temp file path
+                const coverBuffer = await fs.promises.readFile(coverImageFile.tempFilePath);
+                const imageUpload = await cloudinaryService.uploadImage(coverBuffer);
 
-                const imageUpload = await cloudinaryService.uploadImage(coverImageFile.buffer);
-                updateData.coverImage = imageUpload.secure_url;
-                updateData.coverImageId = imageUpload.public_id;
+
+                // Save new cover URL into song document
+                song.coverImage = imageUpload.secure_url;
+                song.coverImageId = imageUpload.public_id;
             }
 
+            // Update all other fields
             Object.assign(song, updateData);
+
+
+            // Save to DB
             await song.save();
 
             return song;
@@ -169,6 +170,7 @@ class SongService {
             throw new Error(`Failed to update song: ${error.message}`);
         }
     }
+
 
     /**
      * Delete song
@@ -253,69 +255,69 @@ class SongService {
         }
     }
 
-// get recently played songs
+    // get recently played songs
 
-async  getRecentlyPlayed(userId, limit = 20) {
-    if (!userId) throw new Error("userId is required");
+    async getRecentlyPlayed(userId, limit = 20) {
+        if (!userId) throw new Error("userId is required");
 
-    // Fetch user and populate recentlyPlayed songs
-    const user = await User.findById(userId)
-        .populate({
-            path: "recentlyPlayed",
-            options: { sort: { _id: -1 }, limit }, // optional: latest songs first
-        })
-        .lean();
+        // Fetch user and populate recentlyPlayed songs
+        const user = await User.findById(userId)
+            .populate({
+                path: "recentlyPlayed",
+                options: { sort: { _id: -1 }, limit }, // optional: latest songs first
+            })
+            .lean();
 
-    if (!user) throw new Error("User not found");
+        if (!user) throw new Error("User not found");
 
-    return user.recentlyPlayed;
-}
+        return user.recentlyPlayed;
+    }
 
 
     /**
      * Get trending songs
      */
     async getTrendingSongs(limit = 10) {
-    try {
-        const songs = await Song.find({ isPublic: true })
-            .populate('uploadedBy', 'name email profileImage')
-            .sort('-plays -createdAt')
-            .limit(limit)
-            .lean();
+        try {
+            const songs = await Song.find({ isPublic: true })
+                .populate('uploadedBy', 'name email profileImage')
+                .sort('-plays -createdAt')
+                .limit(limit)
+                .lean();
 
-        return songs;
-    } catch (error) {
-        throw new Error(`Failed to get trending songs: ${error.message}`);
+            return songs;
+        } catch (error) {
+            throw new Error(`Failed to get trending songs: ${error.message}`);
+        }
     }
-}
 
     /**
      * Get recommended songs based on user preferences
      */
     async getRecommendedSongs(userId, limit = 10) {
-    try {
-        const user = await User.findById(userId).populate('likedSongs');
+        try {
+            const user = await User.findById(userId).populate('likedSongs');
 
-        // Get genres from liked songs
-        const likedGenres = user.likedSongs.map(song => song.genre);
-        const uniqueGenres = [...new Set(likedGenres)];
+            // Get genres from liked songs
+            const likedGenres = user.likedSongs.map(song => song.genre);
+            const uniqueGenres = [...new Set(likedGenres)];
 
-        // Find songs in same genres
-        const songs = await Song.find({
-            isPublic: true,
-            genre: { $in: uniqueGenres },
-            _id: { $nin: user.likedSongs.map(s => s._id) },
-        })
-            .populate('uploadedBy', 'name email profileImage')
-            .sort('-plays')
-            .limit(limit)
-            .lean();
+            // Find songs in same genres
+            const songs = await Song.find({
+                isPublic: true,
+                genre: { $in: uniqueGenres },
+                _id: { $nin: user.likedSongs.map(s => s._id) },
+            })
+                .populate('uploadedBy', 'name email profileImage')
+                .sort('-plays')
+                .limit(limit)
+                .lean();
 
-        return songs;
-    } catch (error) {
-        throw new Error(`Failed to get recommended songs: ${error.message}`);
+            return songs;
+        } catch (error) {
+            throw new Error(`Failed to get recommended songs: ${error.message}`);
+        }
     }
-}
 }
 
 module.exports = new SongService();

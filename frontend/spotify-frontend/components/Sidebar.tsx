@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Home, Search, Library, Plus, Upload, X } from 'lucide-react';
+import { Home, Search, Library, Plus, Upload, X, SignpostBigIcon } from 'lucide-react';
 import { ViewType } from '../types';
 
 interface SidebarProps {
@@ -22,14 +22,14 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, setShowU
     <>
       {/* Overlay for mobile */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={onClose}
         />
       )}
-      
+
       {/* Sidebar */}
-      <div 
+      <div
         className={`
           fixed lg:static inset-y-0 left-0 z-50
           w-64 flex flex-col transform transition-transform duration-300
@@ -41,43 +41,49 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, setShowU
           <h1 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent">
             SoundWave
           </h1>
-          <button 
+          <button
             onClick={onClose}
             className="lg:hidden text-secondary hover:text-primary"
           >
             <X size={24} />
           </button>
         </div>
-        
+
         <nav className="flex-1 px-3">
           <button
             onClick={() => handleNavClick('home')}
-            className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg mb-2 transition-all ${
-              currentView === 'home' ? 'bg-elevated text-primary' : 'text-secondary hover:text-primary'
-            }`}
+            className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg mb-2 transition-all ${currentView === 'home' ? 'bg-elevated text-primary' : 'text-secondary hover:text-primary'
+              }`}
           >
             <Home size={24} />
             <span className="font-medium">Home</span>
           </button>
-          
+
           <button
             onClick={() => handleNavClick('search')}
-            className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg mb-2 transition-all ${
-              currentView === 'search' ? 'bg-elevated text-primary' : 'text-secondary hover:text-primary'
-            }`}
+            className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg mb-2 transition-all ${currentView === 'search' ? 'bg-elevated text-primary' : 'text-secondary hover:text-primary'
+              }`}
           >
             <Search size={24} />
             <span className="font-medium">Search</span>
           </button>
-          
+
           <button
             onClick={() => handleNavClick('library')}
-            className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg mb-6 transition-all ${
-              currentView === 'library' ? 'bg-elevated text-primary' : 'text-secondary hover:text-primary'
-            }`}
+            className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg mb-6 transition-all ${currentView === 'library' ? 'bg-elevated text-primary' : 'text-secondary hover:text-primary'
+              }`}
           >
             <Library size={24} />
             <span className="font-medium">Your Library</span>
+          </button>
+
+          <button
+            onClick={() => handleNavClick('mysongs')}
+            className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg mb-6 transition-all ${currentView === 'library' ? 'bg-elevated text-primary' : 'text-secondary hover:text-primary'
+              }`}
+          >
+            <SignpostBigIcon size={24} />
+            <span className="font-medium">My Songs</span>
           </button>
 
           <button
@@ -90,7 +96,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, setShowU
             <Plus size={24} />
             <span className="font-medium">Create Playlist</span>
           </button>
-          
+
           <button
             onClick={() => {
               setShowUploadModal(true);
@@ -109,6 +115,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, setShowU
             Create playlist
           </button>
         </div>
+
+
       </div>
     </>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import SongCard from '../SongCard';
 import QuickPlaylist from '../QuickPlaylist';
 import { recentlyPlayed, playlists } from '../../data/mockdata';
@@ -9,48 +9,81 @@ import { api } from '@/lib/api';
 import { useSong } from '@/context/SongContext';
 import SongCardSkeleton from '../loader/SongCardSkeleton';
 import { useAuth } from '@/context/AuthContext';
+import { trendingCache, recentCache } from "../../lib/cache"
+
 
 interface HomeViewProps {
-  onPlaySong: (song: Song) => void;
+  onPlaySong: (song: Song,songList:Song[] | undefined) => void;
   currentSong: Song | null
 }
 
 const HomeView: React.FC<HomeViewProps> = ({ onPlaySong, currentSong }) => {
-  const [trendingSongs, setTrendingSongs] = useState<any>()
-  const [recentlyPlaytedSongs, setRecentlyPlayedSongs] = useState<Song[]>()
-  const { setNewUpload, newUpload } = useSong()
-  const [loadingTrending, setLoadingTrending] = useState<boolean>(false)
-  const [loadingRecentlyPLayed, setLoadingRecentlyPLayed] = useState<boolean>(false)
-  const {user}=useAuth()
+  const [trendingSongs, setTrendingSongs] = useState<any>();
+  const [recentlyPlayedSongs, setRecentlyPlayedSongs] = useState<Song[]>();
+  const { setNewUpload, newUpload } = useSong();
+  const [loadingTrending, setLoadingTrending] = useState<boolean>(false);
+  const [loadingRecentlyPlayed, setLoadingRecentlyPlayed] = useState<boolean>(false);
+  const { user } = useAuth();
+
+  // CACHE
   useEffect(() => {
+    // Clear caches when newUpload changes
+    if (newUpload) {
+      trendingCache.current = null;
+      recentCache.current = null;
+      setNewUpload(false)
+    }
 
     async function getTrendingSongs() {
-      setLoadingTrending(true)
-      await api.get('/songs/trending').then(data => {
-        setTrendingSongs(data.data)
+      if (trendingCache.current) {
+        setTrendingSongs(trendingCache.current);
+        return;
+      }
 
-      })
-      setLoadingTrending(false)
+      setLoadingTrending(true);
+      try {
+        const res = await api.get("/songs/trending");
+        trendingCache.current = res.data;
+        setTrendingSongs(res.data);
+      } finally {
+        setLoadingTrending(false);
+      }
     }
-    async function getRecentlyPlayedSongs(){
-      setLoadingRecentlyPLayed(true)
-      await api.get(`/songs/user/${user?._id}/recently-played`).then(data => {
-        setRecentlyPlayedSongs(data.recentlyPlayed)
 
-      })
-      setLoadingTrending(false)
+    async function getRecentlyPlayedSongs() {
+      if (!user?._id) return;
+
+      if (recentCache.current?.userId === user._id) {
+        setRecentlyPlayedSongs(recentCache.current.data);
+        return;
+      }
+
+      setLoadingRecentlyPlayed(true);
+      try {
+        const res = await api.get(`/songs/user/${user._id}/recently-played`);
+        recentCache.current = {
+          userId: user._id,
+          data: res?.recentlyPlayed,
+        };
+        setRecentlyPlayedSongs(res?.recentlyPlayed);
+      } finally {
+        setLoadingRecentlyPlayed(false);
+      }
     }
 
-    // async function getRecentlyPlayedSongs() {
-    //   await api.get('/songs/recentlyPlayed').then(data => setRecentlyPlayedSongs(data.data))
-    // }
-    if(user){
-      getRecentlyPlayedSongs()
-    }
-    getTrendingSongs()
+    getTrendingSongs();
+    if (user) getRecentlyPlayedSongs();
 
-    // getRecentlyPlayedSongs()
-  }, [setNewUpload, newUpload,user])
+  }, [newUpload, user?._id]);
+
+  const handleRecentSongClick = (song: Song) => {
+    onPlaySong(song, recentlyPlayedSongs); // Pass the entire list
+  };
+
+  // When user clicks a song from trending
+  const handleTrendingSongClick = (song: Song) => {
+    onPlaySong(song, trendingSongs); // Pass the entire list
+  };
 
 
   return (
@@ -71,8 +104,8 @@ const HomeView: React.FC<HomeViewProps> = ({ onPlaySong, currentSong }) => {
           <button className="text-xs sm:text-sm text-secondary hover:text-primary font-semibold">Show all</button>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-          {recentlyPlaytedSongs?.map((song, index) => (
-            <SongCard key={song.id} song={song} index={index} onPlay={onPlaySong} currentSong={currentSong} />
+          {recentlyPlayedSongs?.map((song, index) => (
+            <SongCard key={song.id} song={song} index={index} onPlay={handleRecentSongClick} currentSong={currentSong} />
           ))}
         </div>
       </div>
@@ -91,7 +124,7 @@ const HomeView: React.FC<HomeViewProps> = ({ onPlaySong, currentSong }) => {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
 
           {trendingSongs?.map((song: any, index: any) => (
-            <SongCard key={song._id} song={song} index={index} onPlay={onPlaySong} currentSong={currentSong} />
+            <SongCard key={song._id} song={song} index={index} onPlay={handleTrendingSongClick} currentSong={currentSong} />
           ))}
         </div>
       </div>

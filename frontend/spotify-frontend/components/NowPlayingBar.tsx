@@ -15,6 +15,8 @@ interface NowPlayingBarProps {
   onTogglePlayPause: () => void;
   onSeek: (time: number) => void;
   onVolumeChange: (volume: number) => void;
+  onNext:any;
+  onPrevious:any;
 }
 
 const formatTime = (seconds: number): string => {
@@ -33,6 +35,8 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
   onToggleLike,
   onTogglePlayPause,
   onSeek,
+  onNext,
+  onPrevious,
   isLoading,
   onVolumeChange
 }) => {
@@ -139,7 +143,7 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
               />
             </button>
             <button className="text-secondary hover:text-primary transition-all flex-shrink-0">
-              <SkipBack size={20} />
+              <SkipBack onClick={onPrevious} size={20} />
             </button>
             <button
               onClick={onTogglePlayPause}
@@ -155,8 +159,8 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
               )}
 
             </button>
-            <button className="text-secondary hover:text-primary transition-all flex-shrink-0">
-              <SkipForward size={20} />
+            <button onClick={onNext} className="text-secondary hover:text-primary transition-all flex-shrink-0">
+              <SkipForward onClick={onNext} size={20} />
             </button>
           </div>
         </div>
@@ -189,7 +193,7 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
               <Shuffle size={18} />
             </button>
             <button className="text-secondary hover:text-primary transition-all">
-              <SkipBack size={20} />
+              <SkipBack onClick={onPrevious} size={20} />
             </button>
             <button
               onClick={onTogglePlayPause}
@@ -205,7 +209,7 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
 
             </button>
             <button className="text-secondary hover:text-primary transition-all">
-              <SkipForward size={20} />
+              <SkipForward onClick={onNext} size={20} />
             </button>
             <button className="text-secondary hover:text-primary transition-all">
               <Repeat size={18} />

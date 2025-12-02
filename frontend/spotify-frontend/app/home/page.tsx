@@ -1,5 +1,4 @@
 'use client';
-import Hls from 'hls.js';
 import Header from '@/components/Header';
 import NowPlayingBar from '@/components/NowPlayingBar';
 import Sidebar from '@/components/Sidebar';
@@ -7,12 +6,10 @@ import UploadModal from '@/components/UploadModal';
 import HomeView from '@/components/views/HomeView';
 import LibraryView from '@/components/views/LibraryView';
 import SearchView from '@/components/views/SearchView';
-import { api } from '@/lib/api';
 import { Song, UploadFormData, ViewType } from '@/types';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-
-// Add this loading state to your MusicApp component
+import MySongsPage from '@/components/views/MySongs';
 
 const MusicApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('home');
@@ -26,29 +23,79 @@ const MusicApp: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const {user}=useAuth()
+  
+  // New state for playlist management
+  const [playlist, setPlaylist] = useState<Song[]>([]);
+  const [currentSongIndex, setCurrentSongIndex] = useState<number>(-1);
+  
+  const { user } = useAuth();
   const audioRef = useRef<HTMLAudioElement>(null);
-  const hlsRef = useRef<Hls | null>(null);
 
-  const handlePlaySong = (song: Song): void => {
+  // Updated handlePlaySong to accept playlist
+  const handlePlaySong = (song: Song, songList?: Song[]): void => {
     console.log('Playing song:', song);
+    
+    if (songList && songList.length > 0) {
+      setPlaylist(songList);
+      const index = songList.findIndex(s => s._id === song._id);
+      setCurrentSongIndex(index);
+    } else if (playlist.length > 0) {
+      const index = playlist.findIndex(s => s._id === song._id);
+      if (index !== -1) {
+        setCurrentSongIndex(index);
+      }
+    }
+    
     setCurrentSong(song);
     setIsPlaying(true);
-    setIsLoading(true); 
+    setIsLoading(true);
   };
 
+  // Function to play next song
+  const playNextSong = (): void => {
+    if (playlist.length === 0 || currentSongIndex === -1) return;
+    
+    const nextIndex = (currentSongIndex + 1) % playlist.length;
+    const nextSong = playlist[nextIndex];
+    
+    if (nextSong) {
+      console.log('Playing next song:', nextSong);
+      setCurrentSongIndex(nextIndex);
+      setCurrentSong(nextSong);
+      setIsPlaying(true);
+      setIsLoading(true);
+    }
+  };
+
+  // Function to play previous song
+  const playPreviousSong = (): void => {
+    if (playlist.length === 0 || currentSongIndex === -1) return;
+    
+    const prevIndex = currentSongIndex === 0 ? playlist.length - 1 : currentSongIndex - 1;
+    const prevSong = playlist[prevIndex];
+    
+    if (prevSong) {
+      console.log('Playing previous song:', prevSong);
+      setCurrentSongIndex(prevIndex);
+      setCurrentSong(prevSong);
+      setIsPlaying(true);
+      setIsLoading(true);
+    }
+  };
+
+  // Optimized for instant playback with progressive loading
   useEffect(() => {
     if (!audioRef.current || !currentSong) return;
 
     const audio = audioRef.current;
 
-    const setupHLS = async () => {
+    const setupAudioStream = async () => {
       try {
-        setIsLoading(true); // 👈 ADD THIS - Start loading
+        setIsLoading(true);
 
-        // Fetch HLS URL from your backend
+        // Fetch MP3 stream URL (not HLS) for instant playback
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/songs/${currentSong._id}/${user?._id}/stream?quality=low`
+          `${process.env.NEXT_PUBLIC_API_URL}/songs/${currentSong._id}/${user?._id}/stream?quality=high&format=mp3`
         );
 
         if (!response.ok) {
@@ -56,135 +103,59 @@ const MusicApp: React.FC = () => {
         }
 
         const data = await response.json();
-        const hlsUrl = data.streamUrl;
+        const streamUrl = data.streamUrl;
 
-        console.log('Loading Cloudinary HLS stream from:', hlsUrl);
-
-        // Cleanup previous HLS instance
-        if (hlsRef.current) {
-          console.log('Destroying previous HLS instance');
-          hlsRef.current.destroy();
-          hlsRef.current = null;
-        }
+        console.log('Loading progressive MP3 stream from:', streamUrl);
 
         // Reset audio element
         audio.pause();
         audio.currentTime = 0;
+        
+        // Reset duration to prevent NaN display
+        setDuration(0);
+        setCurrentTime(0);
 
-        // Check if HLS.js is supported
-        if (Hls.isSupported()) {
-          console.log('HLS.js is supported, initializing...');
+        // Set the stream URL directly - browser handles progressive download
+        audio.src = streamUrl;
+        
+        // Load metadata but don't wait for entire file
+        audio.load();
 
-          const hls = new Hls({
-            debug: false,
-            enableWorker: true,
-            lowLatencyMode: false,
-            maxBufferLength: 20,
-            maxMaxBufferLength: 120,
-            maxBufferSize: 60 * 1000 * 1000,
-            maxBufferHole: 0.5,
-            startLevel: -1,
-          });
-
-          hlsRef.current = hls;
-
-          hls.attachMedia(audio);
-
-          hls.on(Hls.Events.MEDIA_ATTACHED, () => {
-            console.log('HLS media attached');
-            hls.loadSource(hlsUrl);
-          });
-
-          hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-            console.log('HLS manifest parsed, levels:', data.levels.length);
-
-            const playPromise = audio.play();
-            if (playPromise !== undefined) {
-              playPromise
-                .then(() => {
-                  console.log('HLS playback started successfully');
-                  setIsPlaying(true);
-                  setIsLoading(false); 
-                })
-                .catch(err => {
-                  console.error('HLS playback failed:', err);
-                  setIsPlaying(false);
-                  setIsLoading(false); 
-                });
-            }
-          });
-
-          hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
-            console.log('Quality level switched to:', data.level);
-          });
-
-          hls.on(Hls.Events.ERROR, (event, data) => {
-            console.error('HLS error:', data);
-
-            if (data.fatal) {
-              switch (data.type) {
-                case Hls.ErrorTypes.NETWORK_ERROR:
-                  console.error('Fatal network error, attempting recovery...');
-                  hls.startLoad();
-                  break;
-                case Hls.ErrorTypes.MEDIA_ERROR:
-                  console.error('Fatal media error, attempting recovery...');
-                  hls.recoverMediaError();
-                  break;
-                default:
-                  console.error('Fatal error, cannot recover');
-                  hls.destroy();
-                  setIsPlaying(false);
-                  setIsLoading(false); // 👈 ADD THIS - Stop loading on fatal error
-                  break;
-              }
-            }
-          });
-
-        } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
-          console.log('Using native HLS support (Safari)');
-          audio.src = hlsUrl;
-          audio.load();
-
-          const playPromise = audio.play();
-          if (playPromise !== undefined) {
-            playPromise
-              .then(() => {
-                console.log('Native HLS playback started');
-                setIsPlaying(true);
-                setIsLoading(false); 
-              })
-              .catch(err => {
-                console.error('Native HLS playback failed:', err);
-                setIsPlaying(false);
-                setIsLoading(false); 
-              });
-          }
-        } else {
-          console.error('HLS is not supported in this browser');
-          setIsPlaying(false);
-          setIsLoading(false); 
+        // Attempt to play as soon as possible
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              console.log('Playback started successfully');
+              setIsPlaying(true);
+              setIsLoading(false);
+            })
+            .catch(err => {
+              console.error('Playback failed:', err);
+              setIsPlaying(false);
+              setIsLoading(false);
+            });
         }
 
       } catch (error) {
-        console.error('Error setting up HLS:', error);
+        console.error('Error setting up audio stream:', error);
         setIsPlaying(false);
-        setIsLoading(false);  
+        setIsLoading(false);
       }
     };
 
-    setupHLS();
+    setupAudioStream();
 
     return () => {
-      if (hlsRef.current) {
-        console.log('Cleaning up HLS instance');
-        hlsRef.current.destroy();
-        hlsRef.current = null;
+      // Cleanup
+      if (audio) {
+        audio.pause();
+        audio.src = '';
       }
     };
-  }, [currentSong]);
+  }, [currentSong, user]);
 
-  // Handle audio time updates and events
+  // Handle audio events
   useEffect(() => {
     if (!audioRef.current) return;
 
@@ -196,18 +167,34 @@ const MusicApp: React.FC = () => {
 
     const handleLoadedMetadata = () => {
       console.log('Audio metadata loaded, duration:', audio.duration);
-      setDuration(audio.duration);
+      // Check if duration is valid before setting
+      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
+        setDuration(audio.duration);
+      } else {
+        console.warn('Invalid duration received:', audio.duration);
+        setDuration(0);
+      }
+    };
+
+    const handleDurationChange = () => {
+      console.log('Duration changed:', audio.duration);
+      // Double-check duration on duration change event
+      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
+        setDuration(audio.duration);
+      }
     };
 
     const handleEnded = () => {
-      console.log('Audio ended');
+      console.log('Audio ended - playing next song');
       setIsPlaying(false);
+      // Auto-play next song
+      playNextSong();
     };
 
     const handlePlay = () => {
       console.log('Audio play event');
       setIsPlaying(true);
-      setIsLoading(false); // 👈 ADD THIS - Ensure loading stops when playing
+      setIsLoading(false);
     };
 
     const handlePause = () => {
@@ -216,23 +203,23 @@ const MusicApp: React.FC = () => {
     };
 
     const handleCanPlay = () => {
-      console.log('Audio can play');
-      setIsLoading(false); // 👈 ADD THIS - Stop loading when ready
+      console.log('Audio can play - enough data buffered');
+      setIsLoading(false);
     };
 
     const handleLoadStart = () => {
       console.log('Audio load start');
-      setIsLoading(true); // 👈 ADD THIS - Start loading
+      setIsLoading(true);
     };
 
     const handleWaiting = () => {
       console.log('Audio waiting/buffering');
-      setIsLoading(true); // 👈 ADD THIS - Show loading during buffering
+      setIsLoading(true);
     };
 
     const handlePlaying = () => {
-      console.log('Audio playing (playback started after buffering)');
-      setIsLoading(false); // 👈 ADD THIS - Stop loading when actually playing
+      console.log('Audio playing after buffering');
+      setIsLoading(false);
     };
 
     const handleError = (e: Event) => {
@@ -242,11 +229,24 @@ const MusicApp: React.FC = () => {
         console.error('Audio error message:', audio.error.message);
       }
       setIsPlaying(false);
-      setIsLoading(false); // 👈 ADD THIS
+      setIsLoading(false);
+    };
+
+    const handleProgress = () => {
+      // Optional: Log buffering progress
+      if (audio.buffered.length > 0) {
+        const bufferedEnd = audio.buffered.end(audio.buffered.length - 1);
+        const duration = audio.duration;
+        if (duration > 0) {
+          const percentBuffered = (bufferedEnd / duration) * 100;
+          console.log(`Buffered: ${percentBuffered.toFixed(1)}%`);
+        }
+      }
     };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('durationchange', handleDurationChange);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
@@ -255,10 +255,12 @@ const MusicApp: React.FC = () => {
     audio.addEventListener('waiting', handleWaiting);
     audio.addEventListener('playing', handlePlaying);
     audio.addEventListener('error', handleError);
+    audio.addEventListener('progress', handleProgress);
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('durationchange', handleDurationChange);
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
@@ -267,14 +269,14 @@ const MusicApp: React.FC = () => {
       audio.removeEventListener('waiting', handleWaiting);
       audio.removeEventListener('playing', handlePlaying);
       audio.removeEventListener('error', handleError);
+      audio.removeEventListener('progress', handleProgress);
     };
-  }, []);
+  }, [playlist, currentSongIndex]); // Added dependencies for playNextSong
 
   const togglePlayPause = () => {
     if (!audioRef.current) return;
 
     console.log('Toggle play/pause. Current isPlaying state:', isPlaying);
-    console.log('Audio paused:', audioRef.current.paused);
 
     if (audioRef.current.paused) {
       audioRef.current.play().catch(err => {
@@ -332,21 +334,25 @@ const MusicApp: React.FC = () => {
               />
             )}
             {currentView === 'library' && <LibraryView />}
+            {currentView === 'mysongs' && <MySongsPage />}
           </div>
         </div>
       </div>
 
-      <audio ref={audioRef} preload="auto" />
+      {/* Preload metadata for faster playback start */}
+      <audio ref={audioRef} preload="metadata" />
 
       <NowPlayingBar
         currentSong={currentSong}
         isPlaying={isPlaying}
-        isLoading={isLoading} 
+        isLoading={isLoading}
         currentTime={currentTime}
         duration={duration}
         likedSongs={likedSongs}
         onToggleLike={toggleLike}
         onTogglePlayPause={togglePlayPause}
+        onNext={playNextSong}
+        onPrevious={playPreviousSong}
         onSeek={(time) => {
           if (audioRef.current) {
             console.log('Seeking to:', time);

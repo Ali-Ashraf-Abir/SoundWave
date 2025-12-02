@@ -1,7 +1,4 @@
 'use client';
-
-import React, { useEffect, useState } from 'react';
-import { Play } from 'lucide-react';
 import SongIcon from './SongIcon';
 import { Song } from '../types';
 import Image from 'next/image';
@@ -14,9 +11,6 @@ interface SongCardProps {
 }
 
 const SongCard: React.FC<SongCardProps> = ({ song, index, onPlay, currentSong }) => {
-  const [currentlyPlaying, setCurrentlyPlaying] = useState<Song>()
-
-
 
   return (
     <div

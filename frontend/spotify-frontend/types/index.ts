@@ -8,6 +8,7 @@ export interface Song {
   color: string;
   audioUrl: string;
   coverImage: string;
+  genre:string;
 }
 
 export interface Playlist {
@@ -26,4 +27,4 @@ export interface UploadFormData {
   coverImage?: File | null;
 }
 
-export type ViewType = 'home' | 'search' | 'library';
+export type ViewType = 'home' | 'search' | 'library'|'mysongs';

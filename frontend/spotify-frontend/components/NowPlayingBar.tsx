@@ -15,8 +15,8 @@ interface NowPlayingBarProps {
   onTogglePlayPause: () => void;
   onSeek: (time: number) => void;
   onVolumeChange: (volume: number) => void;
-  onNext:any;
-  onPrevious:any;
+  onNext: any;
+  onPrevious: any;
 }
 
 const formatTime = (seconds: number): string => {
@@ -44,7 +44,7 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [isDraggingProgress, setIsDraggingProgress] = useState(false);
   const [isDraggingVolume, setIsDraggingVolume] = useState(false);
-
+  const [isPause, setIsPause] = useState(false)
   if (!currentSong) return null;
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -117,6 +117,8 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
           ></div>
         </div>
 
+
+
         {/* Main Controls */}
         <div className="flex items-center justify-between px-3 py-2">
           {/* Song Info */}
@@ -124,10 +126,18 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
             <div className={`w-10 h-10 bg-gradient-to-br ${currentSong.color} rounded flex items-center justify-center flex-shrink-0`}>
               <Music size={16} />
             </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="font-semibold truncate text-xs">{currentSong.title}</h4>
-              <p className="text-xs text-secondary truncate">{currentSong.artist}</p>
+            <div className="flex-1 min-w-0 flex flex-row gap-[20px] items-center">
+              <div className="">
+                <h4 className="font-semibold truncate text-xs">{currentSong.title}</h4>
+                <p className="text-xs text-secondary truncate">{currentSong.artist}</p>
+              </div>
+              {isPlaying && <div className="flex items-end gap-[3px] w-4 h-5">
+                <span className="w-1 h-2 bg-white animate-eq1 rounded-sm"></span>
+                <span className="w-1 h-3 bg-white animate-eq2 rounded-sm"></span>
+                <span className="w-1 h-1 bg-white animate-eq3 rounded-sm"></span>
+              </div>}
             </div>
+
           </div>
 
           {/* Controls */}
@@ -205,7 +215,7 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
                   <span className="w-1 h-3 bg-white rounded animate-bounce delay-150"></span>
                   <span className="w-1 h-3 bg-white rounded animate-bounce delay-300"></span>
                 </div>
-               : !isLoading && isPlaying ? <Pause fill="currentColor" size={18} /> : <Play fill="currentColor" size={18} />}
+                : !isLoading && isPlaying ? <Pause fill="currentColor" size={18} /> : <Play fill="currentColor" size={18} />}
 
             </button>
             <button className="text-secondary hover:text-primary transition-all">
@@ -233,6 +243,14 @@ const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
               </div>
             </div>
             <span className="text-xs text-secondary min-w-[40px]">{formatTime(duration)}</span>
+             {isPlaying && <div className="flex items-end gap-[3px] w-12 h-5 mb-2">
+                <span className="w-1 h-4 bg-white animate-eq1 rounded-sm"></span>
+                <span className="w-1 h-5 bg-white animate-eq2 rounded-sm"></span>
+                <span className="w-1 h-3 bg-white animate-eq3 rounded-sm"></span>
+                <span className="w-1 h-4 bg-white animate-eq1 rounded-sm"></span>
+                <span className="w-1 h-5 bg-white animate-eq2 rounded-sm"></span>
+                <span className="w-1 h-3 bg-white animate-eq3 rounded-sm"></span>
+              </div>}
           </div>
         </div>
 

@@ -79,7 +79,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, setShowU
 
           <button
             onClick={() => handleNavClick('mysongs')}
-            className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg mb-6 transition-all ${currentView === 'library' ? 'bg-elevated text-primary' : 'text-secondary hover:text-primary'
+            className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg mb-6 transition-all ${currentView === 'mysongs' ? 'bg-elevated text-primary' : 'text-secondary hover:text-primary'
               }`}
           >
             <SignpostBigIcon size={24} />

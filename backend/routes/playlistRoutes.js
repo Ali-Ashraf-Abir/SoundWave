@@ -13,7 +13,7 @@ const {
 } = require('../controllers/playlistController');
 const { protect } = require('../middleware/authMiddleware');
 
-router.route('/')
+router.route('/myplaylist')
   .get(protect, getMyPlaylists)
   .post(protect, createPlaylist);
 

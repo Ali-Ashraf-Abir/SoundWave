@@ -21,7 +21,7 @@ export default function EditSongModal({ song, onClose, onUpdated }: EditSongModa
     genre: song.genre || "",
   });
 
-  const [coverPreview, setCoverPreview] = useState<string>(song.coverImage);
+  const [coverPreview, setCoverPreview] = useState<string | undefined>(song.coverImage);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
   

@@ -10,6 +10,7 @@ import { Song, UploadFormData, ViewType } from '@/types';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import MySongsPage from '@/components/views/MySongs';
+import { PlaylistsManager } from '@/components/playlist';
 
 const MusicApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('home');
@@ -36,8 +37,10 @@ const MusicApp: React.FC = () => {
     console.log('Playing song:', song);
     
     if (songList && songList.length > 0) {
+      console.log('found Song list')
       setPlaylist(songList);
       const index = songList.findIndex(s => s._id === song._id);
+      console.log(index)
       setCurrentSongIndex(index);
     } else if (playlist.length > 0) {
       const index = playlist.findIndex(s => s._id === song._id);
@@ -45,19 +48,21 @@ const MusicApp: React.FC = () => {
         setCurrentSongIndex(index);
       }
     }
+
+
     
     setCurrentSong(song);
     setIsPlaying(true);
     setIsLoading(true);
   };
-
+      console.log(playlist)
   // Function to play next song
   const playNextSong = (): void => {
     if (playlist.length === 0 || currentSongIndex === -1) return;
     
     const nextIndex = (currentSongIndex + 1) % playlist.length;
     const nextSong = playlist[nextIndex];
-    
+    console.log(nextSong)
     if (nextSong) {
       console.log('Playing next song:', nextSong);
       setCurrentSongIndex(nextIndex);
@@ -333,7 +338,7 @@ const MusicApp: React.FC = () => {
                 onPlaySong={handlePlaySong}
               />
             )}
-            {currentView === 'library' && <LibraryView />}
+            {currentView === 'library' && <PlaylistsManager onPlaySong={handlePlaySong} currentSong={currentSong}/>}
             {currentView === 'mysongs' && <MySongsPage />}
           </div>
         </div>

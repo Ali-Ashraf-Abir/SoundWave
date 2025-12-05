@@ -109,7 +109,7 @@ class SongService {
 
             const skip = (page - 1) * limit;
 
-            const [songs, total] = await Promise.all([
+            const [data, total] = await Promise.all([
                 Song.find(query)
                     .populate('uploadedBy', 'name email profileImage')
                     .sort(sortBy)
@@ -120,7 +120,7 @@ class SongService {
             ]);
 
             return {
-                songs,
+                data,
                 pagination: {
                     page,
                     limit,

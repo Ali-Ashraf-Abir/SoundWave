@@ -39,6 +39,7 @@ app.use(
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/songs', require('./routes/songRoutes'));
+app.use('/api/playlists', require('./routes/playlistRoutes'));
 // Health check route
 app.get('/api/health', (req, res) => {
   res.status(200).json({

@@ -4,16 +4,16 @@ import React, { useEffect, useRef, useState } from 'react';
 import SongCard from '../SongCard';
 import QuickPlaylist from '../QuickPlaylist';
 import { recentlyPlayed, playlists } from '../../data/mockdata';
-import { Song } from '../../types';
+import { Playlist, Song } from '../../types';
 import { api } from '@/lib/api';
 import { useSong } from '@/context/SongContext';
 import SongCardSkeleton from '../loader/SongCardSkeleton';
 import { useAuth } from '@/context/AuthContext';
 import { trendingCache, recentCache } from "../../lib/cache"
-
+import { playlistAPI } from '../playlist/PlaylistApi';
 
 interface HomeViewProps {
-  onPlaySong: (song: Song,songList:Song[] | undefined) => void;
+  onPlaySong: (song: Song, songList: Song[] | undefined) => void;
   currentSong: Song | null
 }
 
@@ -24,7 +24,8 @@ const HomeView: React.FC<HomeViewProps> = ({ onPlaySong, currentSong }) => {
   const [loadingTrending, setLoadingTrending] = useState<boolean>(false);
   const [loadingRecentlyPlayed, setLoadingRecentlyPlayed] = useState<boolean>(false);
   const { user } = useAuth();
-
+  const [loading, setLoading] = useState<boolean>(false)
+  const [playList,setPlaylists]=useState<Playlist[]>()
   // CACHE
   useEffect(() => {
     // Clear caches when newUpload changes
@@ -71,8 +72,22 @@ const HomeView: React.FC<HomeViewProps> = ({ onPlaySong, currentSong }) => {
       }
     }
 
+    const loadPlaylists = async () => {
+      try {
+        const result = await playlistAPI.getMyPlaylists();
+        if (result.success && result.data) {
+          setPlaylists(result.data);
+        }
+      } catch (err) {
+        console.error('Failed to load playlists:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     getTrendingSongs();
     if (user) getRecentlyPlayedSongs();
+    if (user) loadPlaylists()
 
   }, [newUpload, user?._id]);
 
@@ -92,7 +107,7 @@ const HomeView: React.FC<HomeViewProps> = ({ onPlaySong, currentSong }) => {
 
       {/* Quick Access Playlists */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
-        {playlists.slice(0, 6).map((playlist) => (
+        {playList?.slice(0, 6).map((playlist) => (
           <QuickPlaylist key={playlist.id} playlist={playlist} />
         ))}
       </div>

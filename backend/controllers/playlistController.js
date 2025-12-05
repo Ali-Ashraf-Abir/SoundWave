@@ -59,7 +59,7 @@ exports.getUserPlaylists = asyncHandler(async (req, res) => {
 // @access  Private
 exports.getMyPlaylists = asyncHandler(async (req, res) => {
   const playlists = await playlistService.getUserPlaylists(req.user._id);
-
+  console.log(req.user._id)
   res.json({
     success: true,
     data: playlists,
@@ -103,8 +103,7 @@ exports.removeSongFromPlaylist = asyncHandler(async (req, res) => {
 // @desc    Update playlist
 // @route   PUT /api/playlists/:id
 // @access  Private
-exports.updatePlaylist = async
-Handler(async (req, res) => {
+exports.updatePlaylist = asyncHandler(async (req, res) => {
 const coverImageFile = req.files?.coverImage;
 const playlist = await playlistService.updatePlaylist(
 req.params.id,

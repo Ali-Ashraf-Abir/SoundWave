@@ -58,7 +58,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 
       if (!data.success) {
-        console.log(data)
+        
         throw new Error(data.message || "Invalid credentials");
       
       }

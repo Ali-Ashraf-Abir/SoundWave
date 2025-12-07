@@ -108,18 +108,18 @@ const UploadModal: React.FC<UploadModalProps> = ({
         if (e.lengthComputable) {
           const percentComplete = Math.round((e.loaded / e.total) * 100);
           setUploadProgress(percentComplete);
-          console.log(`Upload progress: ${percentComplete}%`);
+          
         }
       });
 
       // Handle completion
       xhr.addEventListener('load', () => {
-        console.log('Server response received. Status:', xhr.status);
+        
         
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const response = JSON.parse(xhr.responseText);
-            console.log('Upload successful:', response);
+            
             
             setUploadStage('complete');
             setUploadProgress(100);
@@ -159,7 +159,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
       });
 
       xhr.addEventListener('abort', () => {
-        console.log('Upload aborted by user');
+        
         setError('Upload cancelled');
         setUploading(false);
         setUploadProgress(0);
@@ -171,7 +171,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
         if (xhr.readyState !== 4) {
           setUploadStage('processing');
           setUploadProgress(100);
-          console.log('Upload complete, waiting for server response...');
+          
         }
       });
 

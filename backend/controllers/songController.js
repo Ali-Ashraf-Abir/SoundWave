@@ -16,8 +16,8 @@ exports.uploadSong = asyncHandler(async (req, res) => {
 
     const audioFile = req.files.audio;
     const coverImageFile = req.files.coverImage;
-    console.log("req.files:", req.files);
-    console.log("req.body:", req.body);
+    
+    
 
     // Validate audio file
     const allowedAudioTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/flac'];

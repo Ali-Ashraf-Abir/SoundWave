@@ -11,6 +11,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import MySongsPage from '@/components/views/MySongs';
 import { PlaylistsManager } from '@/components/playlist';
+import SearchView from '@/components/views/SearchView';
 
 const MusicApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('home');
@@ -34,16 +35,16 @@ const MusicApp: React.FC = () => {
 
   // Updated handlePlaySong to accept playlist
   const handlePlaySong = (song: Song, songList?: Song[]): void => {
-    console.log('Playing song:', song);
+    
     
     if (songList && songList.length > 0) {
-      console.log('found Song list')
+      
       setPlaylist(songList);
       const index = songList.findIndex(s => s._id === song._id);
       if(index == -1){
         const index = songList.findIndex(s => s._id === song._id);
       }
-      console.log(index)
+      
       setCurrentSongIndex(index);
     } else if (playlist.length > 0) {
       const index = playlist.findIndex(s => s._id === song._id);
@@ -58,16 +59,16 @@ const MusicApp: React.FC = () => {
     setIsPlaying(true);
     setIsLoading(true);
   };
-      console.log(playlist)
+      
   // Function to play next song
   const playNextSong = (): void => {
     if (playlist.length === 0 || currentSongIndex === -1) return;
     
     const nextIndex = (currentSongIndex + 1) % playlist.length;
     const nextSong = playlist[nextIndex];
-    console.log(nextSong)
+    
     if (nextSong) {
-      console.log('Playing next song:', nextSong);
+      
       setCurrentSongIndex(nextIndex);
       setCurrentSong(nextSong);
       setIsPlaying(true);
@@ -83,7 +84,7 @@ const MusicApp: React.FC = () => {
     const prevSong = playlist[prevIndex];
     
     if (prevSong) {
-      console.log('Playing previous song:', prevSong);
+      
       setCurrentSongIndex(prevIndex);
       setCurrentSong(prevSong);
       setIsPlaying(true);
@@ -113,7 +114,7 @@ const MusicApp: React.FC = () => {
         const data = await response.json();
         const streamUrl = data.streamUrl;
 
-        console.log('Loading progressive MP3 stream from:', streamUrl);
+        
 
         // Reset audio element
         audio.pause();
@@ -134,7 +135,7 @@ const MusicApp: React.FC = () => {
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
-              console.log('Playback started successfully');
+              
               setIsPlaying(true);
               setIsLoading(false);
             })
@@ -174,7 +175,7 @@ const MusicApp: React.FC = () => {
     };
 
     const handleLoadedMetadata = () => {
-      console.log('Audio metadata loaded, duration:', audio.duration);
+      
       // Check if duration is valid before setting
       if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
         setDuration(audio.duration);
@@ -185,7 +186,7 @@ const MusicApp: React.FC = () => {
     };
 
     const handleDurationChange = () => {
-      console.log('Duration changed:', audio.duration);
+      
       // Double-check duration on duration change event
       if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
         setDuration(audio.duration);
@@ -193,40 +194,40 @@ const MusicApp: React.FC = () => {
     };
 
     const handleEnded = () => {
-      console.log('Audio ended - playing next song');
+      
       setIsPlaying(false);
       // Auto-play next song
       playNextSong();
     };
 
     const handlePlay = () => {
-      console.log('Audio play event');
+      
       setIsPlaying(true);
       setIsLoading(false);
     };
 
     const handlePause = () => {
-      console.log('Audio pause event');
+      
       setIsPlaying(false);
     };
 
     const handleCanPlay = () => {
-      console.log('Audio can play - enough data buffered');
+      
       setIsLoading(false);
     };
 
     const handleLoadStart = () => {
-      console.log('Audio load start');
+      
       setIsLoading(true);
     };
 
     const handleWaiting = () => {
-      console.log('Audio waiting/buffering');
+      
       setIsLoading(true);
     };
 
     const handlePlaying = () => {
-      console.log('Audio playing after buffering');
+      
       setIsLoading(false);
     };
 
@@ -247,7 +248,7 @@ const MusicApp: React.FC = () => {
         const duration = audio.duration;
         if (duration > 0) {
           const percentBuffered = (bufferedEnd / duration) * 100;
-          console.log(`Buffered: ${percentBuffered.toFixed(1)}%`);
+          
         }
       }
     };
@@ -284,7 +285,7 @@ const MusicApp: React.FC = () => {
   const togglePlayPause = () => {
     if (!audioRef.current) return;
 
-    console.log('Toggle play/pause. Current isPlaying state:', isPlaying);
+    
 
     if (audioRef.current.paused) {
       audioRef.current.play().catch(err => {
@@ -307,7 +308,7 @@ const MusicApp: React.FC = () => {
   };
 
   const handleUpload = (): void => {
-    console.log('Uploading song:', uploadForm);
+    
     setShowUploadModal(false);
     setUploadForm({ title: '', artist: '', album: '' });
   };
@@ -333,14 +334,16 @@ const MusicApp: React.FC = () => {
 
           <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 sm:pb-28">
             {currentView === 'home' && <HomeView onPlaySong={handlePlaySong} currentSong={currentSong} />}
-            {/* {currentView === 'search' && (
+            {currentView === 'search' && (
               <SearchView
                 searchQuery={searchQuery}
                 likedSongs={likedSongs}
                 onToggleLike={toggleLike}
+                currentSong={currentSong}
                 onPlaySong={handlePlaySong}
+                isPlaying = {isPlaying}
               />
-            )} */}
+            )}
             {currentView === 'library' && <PlaylistsManager onPlaySong={handlePlaySong} currentSong={currentSong}/>}
             {currentView === 'mysongs' && <MySongsPage />}
           </div>
@@ -363,13 +366,13 @@ const MusicApp: React.FC = () => {
         onPrevious={playPreviousSong}
         onSeek={(time) => {
           if (audioRef.current) {
-            console.log('Seeking to:', time);
+            
             audioRef.current.currentTime = time;
           }
         }}
         onVolumeChange={(volume) => {
           if (audioRef.current) {
-            console.log('Volume changed to:', volume);
+            
             audioRef.current.volume = volume;
           }
         }}

@@ -42,7 +42,7 @@ export default function RegisterPage() {
       }
 
       if(data.success){
-        console.log(data)
+        
         const accessToken = data?.data?.token
         Cookies.set("accessToken", accessToken, { expires: 7 });
         setToken(accessToken);

@@ -59,7 +59,7 @@ exports.getUserPlaylists = asyncHandler(async (req, res) => {
 // @access  Private
 exports.getMyPlaylists = asyncHandler(async (req, res) => {
   const playlists = await playlistService.getUserPlaylists(req.user._id);
-  console.log(req.user._id)
+  
   res.json({
     success: true,
     data: playlists,

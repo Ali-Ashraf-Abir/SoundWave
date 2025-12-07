@@ -34,7 +34,7 @@ class HLSService {
             // Check if HLS already exists
             try {
                 await fs.access(playlistPath);
-                console.log('HLS already exists for:', songId);
+                
                 return { playlistPath, songDir };
             } catch {
                 // HLS doesn't exist, create it
@@ -87,13 +87,13 @@ class HLSService {
                 ])
                 .output(path.join(outputDir, 'playlist.m3u8'))
                 .on('start', (cmd) => {
-                    console.log('FFmpeg started:', cmd);
+                    
                 })
                 .on('progress', (progress) => {
-                    console.log('Processing: ' + progress.percent + '% done');
+                    
                 })
                 .on('end', () => {
-                    console.log('HLS conversion finished');
+                    
                     resolve();
                 })
                 .on('error', (err) => {
@@ -119,7 +119,7 @@ class HLSService {
                 
                 if (now - stats.mtimeMs > maxAge) {
                     await fs.rm(filePath, { recursive: true, force: true });
-                    console.log('Deleted old HLS files:', file);
+                    
                 }
             }
         } catch (error) {

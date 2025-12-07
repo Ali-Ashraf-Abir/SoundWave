@@ -40,7 +40,7 @@ export default function ProfilePage() {
       });
     }
   }, [loading, user, router]);
-  console.log(user)
+  
   const showMessage = (type: "success" | "error", text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 5000);

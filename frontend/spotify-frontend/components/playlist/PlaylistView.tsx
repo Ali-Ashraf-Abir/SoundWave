@@ -80,7 +80,7 @@ const PlaylistView: React.FC<PlaylistViewProps> = ({ playlistId, userId, onBack,
     if (!playlist) return <div>Playlist not found</div>;
 
     const isOwner = playlist.owner?._id === userId;
-    console.log(userId, isOwner, playlist)
+    
     return (
         <div className="animate-fadeIn">
             <button onClick={onBack} className="mb-4 text-secondary hover:text-primary flex items-center gap-2">

@@ -26,7 +26,7 @@ export default function LoginPage() {
       router.push("/profile");      
     } catch (err: any) {
       setError(err.message || "Invalid credentials. Please try again.");
-      console.log(err)
+      
     } finally {
       setLoading(false);
     }

@@ -93,7 +93,7 @@ export async function apiCall<T = any>(
     // if (!response.ok) {
 
     //   if (response.status === 401 && retry) {
-    //     console.log('Unauthorized - attempting to refresh the access token...');
+    //     
 
 
     //     const newToken = await refreshAccessToken();

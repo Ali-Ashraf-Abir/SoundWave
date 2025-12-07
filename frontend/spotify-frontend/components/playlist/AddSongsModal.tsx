@@ -30,7 +30,7 @@ const AddSongsModal: React.FC<AddSongsModalProps> = ({
     const [selectedTab, setSelectedTab] = useState<'all' | 'trending' | 'recommended'>('all');
     const [addingIds, setAddingIds] = useState<Set<string>>(new Set());
     const [successMessage, setSuccessMessage] = useState('');
-    console.log(songs, filteredSongs)
+    
     useEffect(() => {
         if (isOpen && existingSongIds) {
             loadSongs();
@@ -68,7 +68,7 @@ const AddSongsModal: React.FC<AddSongsModalProps> = ({
                 }));
                 setSongs(songsWithStatus);
                 setFilteredSongs(songsWithStatus);
-                console.log(existingSongIds)
+                
             }
         } catch (err) {
             console.error('Failed to load songs:', err);
@@ -76,7 +76,7 @@ const AddSongsModal: React.FC<AddSongsModalProps> = ({
             setLoading(false);
         }
     };
-    console.log(songs)
+    
     const filterSongs = () => {
         if (!searchQuery.trim()) {
             setFilteredSongs(songs);
@@ -121,7 +121,7 @@ const AddSongsModal: React.FC<AddSongsModalProps> = ({
             });
         }
     };
-    console.log(filteredSongs)
+    
     if (!isOpen) return null;
 
     return (

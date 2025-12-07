@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Music, Heart, Play } from 'lucide-react';
+import { Music, Heart, Play, Pause } from 'lucide-react';
 import { Song } from '../types';
 
 interface SearchResultItemProps {
@@ -9,9 +9,11 @@ interface SearchResultItemProps {
   likedSongs: Set<string>;
   onToggleLike: (songId: string) => void;
   onPlay: (song: Song) => void;
+  currentSong:Song | null;
 }
 
-const SearchResultItem: React.FC<SearchResultItemProps> = ({ song, likedSongs, onToggleLike, onPlay }) => {
+const SearchResultItem: React.FC<SearchResultItemProps> = ({ song, likedSongs, onToggleLike, onPlay,currentSong }) => {
+  
   return (
     <div className="flex items-center gap-2 sm:gap-4 p-2 sm:p-3 rounded-lg hover:bg-tertiary transition-all group">
       <div className={`w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br ${song.color} rounded flex items-center justify-center flex-shrink-0`}>
@@ -42,7 +44,7 @@ const SearchResultItem: React.FC<SearchResultItemProps> = ({ song, likedSongs, o
         }}
         className="opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
       >
-        <Play fill="currentColor" size={18} className="sm:w-5 sm:h-5" />
+        {currentSong?._id == song._id ?<Pause fill="currentColor" size={18} className="sm:w-5 sm:h-5" /> :<Play fill="currentColor" size={18} className="sm:w-5 sm:h-5" />}
       </button>
     </div>
   );

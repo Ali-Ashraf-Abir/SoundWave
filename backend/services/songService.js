@@ -145,7 +145,7 @@ class SongService {
             if (song.uploadedBy.toString() !== userId.toString()) {
                 throw new Error('Not authorized to update this song');
             }
-            console.log(coverImageFile)
+            
             // --- Update cover image ---
             if (coverImageFile) {
                 // Upload image from temp file path

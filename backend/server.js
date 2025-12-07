@@ -39,6 +39,7 @@ app.use(
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/playlists', require('./routes/playlistRoutes'));
+app.use('/api/upload', require('./routes/uploadRoutes'));
 // timeout middleware
 app.use('/api/songs', (req, res, next) => {
   req.setTimeout(300000); // 5 minutes

@@ -71,6 +71,71 @@ exports.uploadSong = asyncHandler(async (req, res) => {
     }
 });
 
+exports.saveSongMetadata = asyncHandler(async (req, res) => {
+    const {
+        title,
+        artist,
+        album,
+        genre,
+        tags,
+        isPublic,
+        audioUrl,
+        cloudinaryId,
+        coverImage,
+        coverImageId,
+        duration,
+        fileSize,
+        format
+    } = req.body;
+
+    // Validate required fields
+    if (!title || !artist) {
+        res.status(400);
+        throw new Error('Title and artist are required');
+    }
+
+    if (!audioUrl || !cloudinaryId) {
+        res.status(400);
+        throw new Error('Audio URL and Cloudinary ID are required');
+    }
+
+    // Validate Cloudinary URLs to prevent malicious data
+    if (!audioUrl.includes('cloudinary.com') || !cloudinaryId) {
+        res.status(400);
+        throw new Error('Invalid Cloudinary URL or ID');
+    }
+
+    const songData = {
+        title,
+        artist,
+        album: album || 'Single',
+        genre: genre || 'Other',
+        tags: tags || [],
+        isPublic: isPublic !== false,
+        audioUrl,
+        cloudinaryId,
+        coverImage: coverImage || null,
+        coverImageId: coverImageId || null,
+        uploadedBy: req.user._id,
+        duration: duration || 0,
+        fileSize: fileSize || 0,
+        format: format || 'mp3'
+    };
+
+    try {
+        const song = await songService.createSongFromMetadata(songData);
+
+        res.status(201).json({
+            success: true,
+            data: song,
+        });
+    } catch (error) {
+        console.error('Metadata save error:', error);
+        res.status(500);
+        throw error;
+    }
+});
+
 // @desc    Get song by ID
 // @route   GET /api/songs/:id
 // @access  Public

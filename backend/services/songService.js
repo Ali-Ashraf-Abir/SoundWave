@@ -112,7 +112,120 @@ class SongService {
         }
     }
 
+    async createSongFromMetadata(songData) {
+        try {
+            const song = await Song.create(songData);
+            return song;
+        } catch (error) {
+            throw new Error(`Failed to create song: ${error.message}`);
+        }
+    }
 
+    /**
+     * Legacy method: Create song with file upload through backend
+     * Kept for backward compatibility
+     */
+    async createSong(songData, audioFile, coverImageFile, userId) {
+        let audioBuffer, coverBuffer;
+
+        try {
+            // Read temp file buffer with error handling
+            try {
+                audioBuffer = await fs.promises.readFile(audioFile.tempFilePath);
+            } catch (readError) {
+                console.error('Failed to read audio file:', readError);
+                throw new Error('Failed to read uploaded audio file. Please try again.');
+            }
+
+            // Upload audio to Cloudinary with retry logic
+            let audioUpload;
+            let retries = 3;
+            while (retries > 0) {
+                try {
+                    audioUpload = await cloudinaryService.uploadAudio(audioBuffer, {
+                        timeout: 240000, // 4 minutes timeout
+                        chunk_size: 6000000, // 6MB chunks for better mobile handling
+                    });
+                    break;
+                } catch (uploadError) {
+                    retries--;
+                    if (retries === 0) {
+                        throw new Error('Failed to upload audio after multiple attempts. Please try again.');
+                    }
+                    console.log(`Cloudinary upload failed, retrying... (${3 - retries}/3)`);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            }
+
+            // Get audio duration with fallback
+            let duration = 0;
+            try {
+                duration = Math.floor(await getAudioDurationInSeconds(audioFile.tempFilePath));
+            } catch (err) {
+                console.error('Error getting duration:', err);
+                duration = 180; // default 3 min
+            }
+
+            // Upload cover image if provided
+            let coverImage = null;
+            let coverImageId = null;
+            if (coverImageFile) {
+                try {
+                    coverBuffer = await fs.promises.readFile(coverImageFile.tempFilePath);
+                    const imageUpload = await cloudinaryService.uploadImage(coverBuffer, {
+                        timeout: 60000, // 1 minute timeout for images
+                    });
+                    coverImage = imageUpload.secure_url;
+                    coverImageId = imageUpload.public_id;
+                } catch (imageError) {
+                    console.error('Cover image upload failed:', imageError);
+                    // Continue without cover image rather than failing entire upload
+                    coverImage = null;
+                    coverImageId = null;
+                }
+            }
+
+            // Create DB record
+            const song = await Song.create({
+                ...songData,
+                audioUrl: audioUpload.secure_url,
+                cloudinaryId: audioUpload.public_id,
+                coverImage,
+                coverImageId,
+                uploadedBy: userId,
+                duration,
+                fileSize: audioFile.size,
+                format: audioUpload.format,
+            });
+
+            // Clean up temp files after successful upload
+            try {
+                await fs.promises.unlink(audioFile.tempFilePath);
+                if (coverImageFile?.tempFilePath) {
+                    await fs.promises.unlink(coverImageFile.tempFilePath);
+                }
+            } catch (cleanupError) {
+                console.error('Cleanup error:', cleanupError);
+                // Don't throw - upload was successful
+            }
+
+            return song;
+        } catch (error) {
+            // Clean up temp files on error
+            try {
+                if (audioFile.tempFilePath) {
+                    await fs.promises.unlink(audioFile.tempFilePath).catch(() => { });
+                }
+                if (coverImageFile?.tempFilePath) {
+                    await fs.promises.unlink(coverImageFile.tempFilePath).catch(() => { });
+                }
+            } catch (cleanupError) {
+                console.error('Cleanup error:', cleanupError);
+            }
+
+            throw new Error(`Failed to create song: ${error.message}`);
+        }
+    }
     /**
      * Get song by ID with streaming URLs
      */

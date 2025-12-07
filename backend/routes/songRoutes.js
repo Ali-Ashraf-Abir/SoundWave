@@ -12,14 +12,15 @@ const {
   streamSongHLS,
   getHLSSegment,
   getRecentlyPlayed,
-  streamSongDirect
+  streamSongDirect,
+  saveSongMetadata
 } = require('../controllers/songController');
 const { protect } = require('../middleware/authMiddleware');
 
 router.route('/')
   .get(getAllSongs)
   .post(protect, uploadSong);
-
+router.post('/metadata', protect, saveSongMetadata)
 router.get('/trending', getTrendingSongs);
 router.get('/recommended', protect, getRecommendedSongs);
 

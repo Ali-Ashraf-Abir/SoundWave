@@ -5,6 +5,8 @@ import { Upload, X, Music, Image, Loader2, CheckCircle } from 'lucide-react';
 import { UploadFormData } from '../types';
 import Cookies from 'js-cookie';
 import { useSong } from '@/context/SongContext';
+import cloudinaryUploadService from '../lib/cloudinaryUpload';
+
 interface UploadModalProps {
   showUploadModal: boolean;
   setShowUploadModal: (show: boolean) => void;
@@ -22,12 +24,12 @@ const UploadModal: React.FC<UploadModalProps> = ({
 }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadStage, setUploadStage] = useState<'uploading' | 'processing' | 'complete'>('uploading');
+  const [uploadStage, setUploadStage] = useState<'audio' | 'image' | 'saving' | 'complete'>('audio');
   const [error, setError] = useState<string | null>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const xhrRef = useRef<XMLHttpRequest | null>(null);
-  const { setNewUpload, newUpload } = useSong()
+  const { setNewUpload, newUpload } = useSong();
+
   if (!showUploadModal) return null;
 
   const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,185 +84,126 @@ const UploadModal: React.FC<UploadModalProps> = ({
     setUploading(true);
     setError(null);
     setUploadProgress(0);
-    setUploadStage('uploading');
+    setUploadStage('audio');
 
     try {
-      const formData = new FormData();
-      formData.append('title', uploadForm.title);
-      formData.append('artist', uploadForm.artist);
-      formData.append('album', uploadForm.album || 'Single');
-      formData.append('genre', uploadForm.genre || 'Other');
-      formData.append('audio', uploadForm.audioFile);
+      // Step 1: Upload audio directly to Cloudinary
+      setUploadStage('audio');
+      const audioUploadResult = await cloudinaryUploadService.uploadAudio(
+        uploadForm.audioFile,
+        (progress) => {
+          setUploadProgress(progress.percentage);
+        }
+      );
 
-      if (uploadForm.coverImage) {
-        formData.append('coverImage', uploadForm.coverImage);
+      // Step 2: Get audio duration
+      let duration = 0;
+      try {
+        duration = await cloudinaryUploadService.getAudioDuration(uploadForm.audioFile);
+      } catch (err) {
+        console.error('Error getting duration:', err);
+        duration = 180; // default 3 min
       }
+
+      // Step 3: Upload cover image if provided
+      let coverImageResult = null;
+      if (uploadForm.coverImage) {
+        setUploadStage('image');
+        setUploadProgress(0);
+        try {
+          coverImageResult = await cloudinaryUploadService.uploadImage(
+            uploadForm.coverImage,
+            (progress) => {
+              setUploadProgress(progress.percentage);
+            }
+          );
+        } catch (imageError) {
+          console.error('Cover image upload failed:', imageError);
+          // Continue without cover image rather than failing entire upload
+        }
+      }
+
+      // Step 4: Save metadata to backend
+      setUploadStage('saving');
+      setUploadProgress(100);
 
       const token = Cookies.get('accessToken');
-
-      const xhr = new XMLHttpRequest();
-      xhrRef.current = xhr;
-
-      // CRITICAL: Set a longer timeout for mobile networks (5 minutes)
-      xhr.timeout = 300000; // 5 minutes in milliseconds
-
-      // Add timeout handler
-      xhr.addEventListener('timeout', () => {
-        console.error('Upload timeout - connection too slow or unstable');
-        setError('Upload timed out. Please check your connection and try again.');
-        setUploading(false);
-        setUploadProgress(0);
-        setUploadStage('uploading');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/songs/metadata`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: uploadForm.title,
+          artist: uploadForm.artist,
+          album: uploadForm.album || 'Single',
+          genre: uploadForm.genre || 'Other',
+          audioUrl: audioUploadResult.secure_url,
+          cloudinaryId: audioUploadResult.public_id,
+          coverImage: coverImageResult?.secure_url || null,
+          coverImageId: coverImageResult?.public_id || null,
+          duration,
+          fileSize: uploadForm.audioFile.size,
+          format: audioUploadResult.format
+        })
       });
 
-      // Track upload progress with mobile-friendly updates
-      let lastProgressUpdate = Date.now();
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          const now = Date.now();
-          // Throttle progress updates to reduce overhead on slow connections
-          if (now - lastProgressUpdate > 500) { // Update max every 500ms
-            const percentComplete = Math.round((e.loaded / e.total) * 100);
-            setUploadProgress(percentComplete);
-            lastProgressUpdate = now;
-          }
-        }
-      });
-
-      // Handle completion
-      xhr.addEventListener('load', () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            setUploadStage('complete');
-            setUploadProgress(100);
-            setNewUpload(!newUpload);
-
-            setTimeout(() => {
-              setShowUploadModal(false);
-              setUploadForm({
-                title: '',
-                artist: '',
-                album: '',
-                genre: '',
-                audioFile: null,
-                coverImage: null
-              });
-              setUploading(false);
-              setUploadProgress(0);
-              setUploadStage('uploading');
-              onUpload();
-            }, 1500);
-          } catch (e) {
-            console.error('Failed to parse response:', e);
-            setError('Server returned invalid response');
-            setUploading(false);
-            setUploadProgress(0);
-            setUploadStage('uploading');
-          }
-        } else {
-          let errorMessage = 'Upload failed';
-          try {
-            const errorData = JSON.parse(xhr.responseText);
-            errorMessage = errorData.message || errorMessage;
-          } catch (e) {
-            errorMessage = `Server error: ${xhr.status}`;
-          }
-          setError(errorMessage);
-          setUploading(false);
-          setUploadProgress(0);
-          setUploadStage('uploading');
-        }
-      });
-
-      // Enhanced error handler with retry suggestion
-      xhr.addEventListener('error', () => {
-        console.error('XHR network error');
-        // Provide more helpful error message for mobile users
-        setError('Network error - connection interrupted. Please check your signal and try again.');
-        setUploading(false);
-        setUploadProgress(0);
-        setUploadStage('uploading');
-      });
-
-      xhr.addEventListener('abort', () => {
-        setError('Upload cancelled');
-        setUploading(false);
-        setUploadProgress(0);
-        setUploadStage('uploading');
-      });
-
-      // When upload completes but server still processing
-      xhr.upload.addEventListener('load', () => {
-        if (xhr.readyState !== 4) {
-          setUploadStage('processing');
-          setUploadProgress(100);
-        }
-      });
-
-      // Open connection and send
-      xhr.open('POST', `${process.env.NEXT_PUBLIC_API_URL}/songs`);
-
-      // Set authorization header
-      if (token) {
-        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save song metadata');
       }
 
-      // IMPORTANT: Let browser handle Content-Type for FormData
-      // Don't manually set Content-Type header - it needs the boundary parameter
+      // Success!
+      setUploadStage('complete');
+      setNewUpload(!newUpload);
 
-      xhr.send(formData);
+      setTimeout(() => {
+        setShowUploadModal(false);
+        setUploadForm({
+          title: '',
+          artist: '',
+          album: '',
+          genre: '',
+          audioFile: null,
+          coverImage: null
+        });
+        setUploading(false);
+        setUploadProgress(0);
+        setUploadStage('audio');
+        onUpload();
+      }, 1500);
 
     } catch (err) {
       console.error('Upload error:', err);
       setError(err instanceof Error ? err.message : 'Failed to upload song');
       setUploading(false);
       setUploadProgress(0);
-      setUploadStage('uploading');
-    }
-  };
-
-  // Optional: Add a retry mechanism
-  const handleSubmitWithRetry = async (retryCount = 0) => {
-    const MAX_RETRIES = 2;
-
-    try {
-      await handleSubmit();
-    } catch (error) {
-      if (retryCount < MAX_RETRIES) {
-        console.log(`Upload failed, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
-        setError(`Upload failed. Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
-
-        // Wait before retry (exponential backoff)
-        await new Promise(resolve => setTimeout(resolve, 2000 * (retryCount + 1)));
-
-        return handleSubmitWithRetry(retryCount + 1);
-      } else {
-        setError('Upload failed after multiple attempts. Please try again later.');
-      }
+      setUploadStage('audio');
     }
   };
 
   const handleClose = () => {
-    if (uploading) {
-      // Cancel ongoing upload
-      if (xhrRef.current) {
-        xhrRef.current.abort();
+    if (uploading && uploadStage !== 'saving' && uploadStage !== 'complete') {
+      if (!confirm('Upload in progress. Are you sure you want to cancel?')) {
+        return;
       }
     }
     setShowUploadModal(false);
     setError(null);
     setUploadProgress(0);
-    setUploadStage('uploading');
+    setUploadStage('audio');
     setUploading(false);
   };
 
   const getProgressText = () => {
     switch (uploadStage) {
-      case 'uploading':
-        return `Uploading... ${uploadProgress}%`;
-      case 'processing':
-        return 'Processing audio...';
+      case 'audio':
+        return `Uploading audio... ${uploadProgress}%`;
+      case 'image':
+        return `Uploading cover image... ${uploadProgress}%`;
+      case 'saving':
+        return 'Saving song data...';
       case 'complete':
         return 'Complete!';
       default:
@@ -426,17 +369,22 @@ const UploadModal: React.FC<UploadModalProps> = ({
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-secondary">{getProgressText()}</span>
-                {uploadStage === 'uploading' && (
+                {uploadStage !== 'saving' && uploadStage !== 'complete' && (
                   <span className="text-primary font-semibold">{uploadProgress}%</span>
                 )}
               </div>
               <div className="w-full h-2 bg-elevated rounded-full overflow-hidden">
                 <div
-                  className={`h-full transition-all duration-300 ${uploadStage === 'processing'
+                  className={`h-full transition-all duration-300 ${
+                    uploadStage === 'saving'
                       ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 animate-pulse'
                       : 'bg-gradient-to-r from-green-500 to-green-600'
-                    }`}
-                  style={{ width: uploadStage === 'processing' ? '100%' : `${uploadProgress}%` }}
+                  }`}
+                  style={{ 
+                    width: uploadStage === 'saving' || uploadStage === 'complete' 
+                      ? '100%' 
+                      : `${uploadProgress}%` 
+                  }}
                 />
               </div>
             </div>
@@ -445,7 +393,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
           <div className="flex gap-3 pt-4">
             <button
               onClick={handleClose}
-              disabled={uploadStage === 'processing'}
+              disabled={uploadStage === 'saving'}
               className="flex-1 px-4 py-2 rounded-full border border-default text-secondary hover:text-primary hover:border-primary transition-all text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {uploading ? 'Cancel' : 'Close'}
@@ -463,7 +411,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
               ) : uploading ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  {uploadStage === 'processing' ? 'Processing...' : `${uploadProgress}%`}
+                  {uploadStage === 'saving' ? 'Saving...' : `${uploadProgress}%`}
                 </>
               ) : (
                 'Upload'

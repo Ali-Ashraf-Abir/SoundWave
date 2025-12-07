@@ -38,8 +38,17 @@ app.use(
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/songs', require('./routes/songRoutes'));
 app.use('/api/playlists', require('./routes/playlistRoutes'));
+// timeout middleware
+app.use('/api/songs', (req, res, next) => {
+  req.setTimeout(300000); // 5 minutes
+  res.setTimeout(300000);
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Keep-Alive', 'timeout=300');
+  next();
+});
+
+app.use('/api/songs', require('./routes/songRoutes'));
 // Health check route
 app.get('/api/health', (req, res) => {
   res.status(200).json({

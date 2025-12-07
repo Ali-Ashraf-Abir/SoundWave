@@ -13,12 +13,12 @@ interface UploadModalProps {
   onUpload: () => void;
 }
 
-const UploadModal: React.FC<UploadModalProps> = ({ 
-  showUploadModal, 
-  setShowUploadModal, 
-  uploadForm, 
-  setUploadForm, 
-  onUpload 
+const UploadModal: React.FC<UploadModalProps> = ({
+  showUploadModal,
+  setShowUploadModal,
+  uploadForm,
+  setUploadForm,
+  onUpload
 }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -27,7 +27,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
   const audioInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
-  const {setNewUpload,newUpload} = useSong()
+  const { setNewUpload, newUpload } = useSong()
   if (!showUploadModal) return null;
 
   const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,43 +91,61 @@ const UploadModal: React.FC<UploadModalProps> = ({
       formData.append('album', uploadForm.album || 'Single');
       formData.append('genre', uploadForm.genre || 'Other');
       formData.append('audio', uploadForm.audioFile);
-      
+
       if (uploadForm.coverImage) {
         formData.append('coverImage', uploadForm.coverImage);
       }
 
-      // Get auth token from localStorage or your auth system
       const token = Cookies.get('accessToken');
 
-      // Use XMLHttpRequest for progress tracking
       const xhr = new XMLHttpRequest();
       xhrRef.current = xhr;
 
-      // Track upload progress
+      // CRITICAL: Set a longer timeout for mobile networks (5 minutes)
+      xhr.timeout = 300000; // 5 minutes in milliseconds
+
+      // Add timeout handler
+      xhr.addEventListener('timeout', () => {
+        console.error('Upload timeout - connection too slow or unstable');
+        setError('Upload timed out. Please check your connection and try again.');
+        setUploading(false);
+        setUploadProgress(0);
+        setUploadStage('uploading');
+      });
+
+      // Track upload progress with mobile-friendly updates
+      let lastProgressUpdate = Date.now();
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
-          const percentComplete = Math.round((e.loaded / e.total) * 100);
-          setUploadProgress(percentComplete);
-          
+          const now = Date.now();
+          // Throttle progress updates to reduce overhead on slow connections
+          if (now - lastProgressUpdate > 500) { // Update max every 500ms
+            const percentComplete = Math.round((e.loaded / e.total) * 100);
+            setUploadProgress(percentComplete);
+            lastProgressUpdate = now;
+          }
         }
       });
 
       // Handle completion
       xhr.addEventListener('load', () => {
-        
-        
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const response = JSON.parse(xhr.responseText);
-            
-            
             setUploadStage('complete');
             setUploadProgress(100);
-            setNewUpload(!newUpload)
-            // Success! Close modal and reset
+            setNewUpload(!newUpload);
+
             setTimeout(() => {
               setShowUploadModal(false);
-              setUploadForm({ title: '', artist: '', album: '', audioFile: null, coverImage: null });
+              setUploadForm({
+                title: '',
+                artist: '',
+                album: '',
+                genre: '',
+                audioFile: null,
+                coverImage: null
+              });
               setUploading(false);
               setUploadProgress(0);
               setUploadStage('uploading');
@@ -135,7 +153,10 @@ const UploadModal: React.FC<UploadModalProps> = ({
             }, 1500);
           } catch (e) {
             console.error('Failed to parse response:', e);
-            throw new Error('Invalid server response');
+            setError('Server returned invalid response');
+            setUploading(false);
+            setUploadProgress(0);
+            setUploadStage('uploading');
           }
         } else {
           let errorMessage = 'Upload failed';
@@ -145,43 +166,48 @@ const UploadModal: React.FC<UploadModalProps> = ({
           } catch (e) {
             errorMessage = `Server error: ${xhr.status}`;
           }
-          throw new Error(errorMessage);
+          setError(errorMessage);
+          setUploading(false);
+          setUploadProgress(0);
+          setUploadStage('uploading');
         }
       });
 
-      // Handle errors
+      // Enhanced error handler with retry suggestion
       xhr.addEventListener('error', () => {
         console.error('XHR network error');
-        setError('Network error occurred during upload');
+        // Provide more helpful error message for mobile users
+        setError('Network error - connection interrupted. Please check your signal and try again.');
         setUploading(false);
         setUploadProgress(0);
         setUploadStage('uploading');
       });
 
       xhr.addEventListener('abort', () => {
-        
         setError('Upload cancelled');
         setUploading(false);
         setUploadProgress(0);
         setUploadStage('uploading');
       });
 
-      // When upload completes but server still processing, show processing stage
+      // When upload completes but server still processing
       xhr.upload.addEventListener('load', () => {
         if (xhr.readyState !== 4) {
           setUploadStage('processing');
           setUploadProgress(100);
-          
         }
       });
 
       // Open connection and send
       xhr.open('POST', `${process.env.NEXT_PUBLIC_API_URL}/songs`);
-      
-      // Set authorization header if needed
+
+      // Set authorization header
       if (token) {
         xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       }
+
+      // IMPORTANT: Let browser handle Content-Type for FormData
+      // Don't manually set Content-Type header - it needs the boundary parameter
 
       xhr.send(formData);
 
@@ -191,6 +217,27 @@ const UploadModal: React.FC<UploadModalProps> = ({
       setUploading(false);
       setUploadProgress(0);
       setUploadStage('uploading');
+    }
+  };
+
+  // Optional: Add a retry mechanism
+  const handleSubmitWithRetry = async (retryCount = 0) => {
+    const MAX_RETRIES = 2;
+
+    try {
+      await handleSubmit();
+    } catch (error) {
+      if (retryCount < MAX_RETRIES) {
+        console.log(`Upload failed, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+        setError(`Upload failed. Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+
+        // Wait before retry (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 2000 * (retryCount + 1)));
+
+        return handleSubmitWithRetry(retryCount + 1);
+      } else {
+        setError('Upload failed after multiple attempts. Please try again later.');
+      }
     }
   };
 
@@ -226,7 +273,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
       <div className="bg-secondary rounded-lg p-4 sm:p-6 w-full max-w-md shadow-custom-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <h3 className="text-xl sm:text-2xl font-bold">Upload Song</h3>
-          <button 
+          <button
             onClick={handleClose}
             className="text-secondary hover:text-primary"
           >
@@ -385,11 +432,10 @@ const UploadModal: React.FC<UploadModalProps> = ({
               </div>
               <div className="w-full h-2 bg-elevated rounded-full overflow-hidden">
                 <div
-                  className={`h-full transition-all duration-300 ${
-                    uploadStage === 'processing' 
-                      ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 animate-pulse' 
+                  className={`h-full transition-all duration-300 ${uploadStage === 'processing'
+                      ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 animate-pulse'
                       : 'bg-gradient-to-r from-green-500 to-green-600'
-                  }`}
+                    }`}
                   style={{ width: uploadStage === 'processing' ? '100%' : `${uploadProgress}%` }}
                 />
               </div>

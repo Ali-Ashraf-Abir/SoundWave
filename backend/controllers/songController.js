@@ -16,14 +16,12 @@ exports.uploadSong = asyncHandler(async (req, res) => {
 
     const audioFile = req.files.audio;
     const coverImageFile = req.files.coverImage;
-    
-    
 
     // Validate audio file
-    const allowedAudioTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/flac'];
+    const allowedAudioTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/flac', 'audio/x-m4a', 'audio/mp4'];
     if (!allowedAudioTypes.includes(audioFile.mimetype)) {
         res.status(400);
-        throw new Error('Invalid audio file format. Allowed: MP3, WAV, FLAC');
+        throw new Error('Invalid audio file format. Allowed: MP3, WAV, FLAC, M4A');
     }
 
     // Validate file size (max 50MB)
@@ -41,17 +39,36 @@ exports.uploadSong = asyncHandler(async (req, res) => {
         isPublic: isPublic !== 'false',
     };
 
-    const song = await songService.createSong(
-        songData,
-        audioFile,
-        coverImageFile,
-        req.user._id
-    );
+    try {
+        const song = await songService.createSong(
+            songData,
+            audioFile,
+            coverImageFile,
+            req.user._id
+        );
 
-    res.status(201).json({
-        success: true,
-        data: song,
-    });
+        res.status(201).json({
+            success: true,
+            data: song,
+        });
+    } catch (error) {
+        console.error('Upload error:', error);
+
+        // Clean up temp files on error
+        try {
+            if (audioFile.tempFilePath) {
+                await fs.promises.unlink(audioFile.tempFilePath).catch(() => { });
+            }
+            if (coverImageFile?.tempFilePath) {
+                await fs.promises.unlink(coverImageFile.tempFilePath).catch(() => { });
+            }
+        } catch (cleanupError) {
+            console.error('Cleanup error:', cleanupError);
+        }
+
+        res.status(500);
+        throw error;
+    }
 });
 
 // @desc    Get song by ID

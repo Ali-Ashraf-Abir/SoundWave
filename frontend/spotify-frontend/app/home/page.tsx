@@ -4,8 +4,8 @@ import NowPlayingBar from '@/components/NowPlayingBar';
 import Sidebar from '@/components/Sidebar';
 import UploadModal from '@/components/UploadModal';
 import HomeView from '@/components/views/HomeView';
-import LibraryView from '@/components/views/LibraryView';
-import SearchView from '@/components/views/SearchView';
+// import LibraryView from '@/components/views/LibraryView';
+// import SearchView from '@/components/views/SearchView';
 import { Song, UploadFormData, ViewType } from '@/types';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -18,7 +18,7 @@ const MusicApp: React.FC = () => {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [uploadForm, setUploadForm] = useState<UploadFormData>({ title: '', artist: '', album: '' });
-  const [likedSongs, setLikedSongs] = useState<Set<number>>(new Set());
+  const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -40,6 +40,9 @@ const MusicApp: React.FC = () => {
       console.log('found Song list')
       setPlaylist(songList);
       const index = songList.findIndex(s => s._id === song._id);
+      if(index == -1){
+        const index = songList.findIndex(s => s._id === song._id);
+      }
       console.log(index)
       setCurrentSongIndex(index);
     } else if (playlist.length > 0) {
@@ -293,7 +296,7 @@ const MusicApp: React.FC = () => {
     }
   };
 
-  const toggleLike = (songId: number): void => {
+  const toggleLike = (songId: string): void => {
     const newLiked = new Set(likedSongs);
     if (newLiked.has(songId)) {
       newLiked.delete(songId);
@@ -330,14 +333,14 @@ const MusicApp: React.FC = () => {
 
           <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 sm:pb-28">
             {currentView === 'home' && <HomeView onPlaySong={handlePlaySong} currentSong={currentSong} />}
-            {currentView === 'search' && (
+            {/* {currentView === 'search' && (
               <SearchView
                 searchQuery={searchQuery}
                 likedSongs={likedSongs}
                 onToggleLike={toggleLike}
                 onPlaySong={handlePlaySong}
               />
-            )}
+            )} */}
             {currentView === 'library' && <PlaylistsManager onPlaySong={handlePlaySong} currentSong={currentSong}/>}
             {currentView === 'mysongs' && <MySongsPage />}
           </div>

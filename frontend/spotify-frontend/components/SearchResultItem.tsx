@@ -6,8 +6,8 @@ import { Song } from '../types';
 
 interface SearchResultItemProps {
   song: Song;
-  likedSongs: Set<number>;
-  onToggleLike: (songId: number) => void;
+  likedSongs: Set<string>;
+  onToggleLike: (songId: string) => void;
   onPlay: (song: Song) => void;
 }
 

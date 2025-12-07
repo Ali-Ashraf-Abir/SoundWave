@@ -10,8 +10,8 @@ interface NowPlayingBarProps {
   isLoading: boolean; // 👈 ADD THIS
   currentTime: number;
   duration: number;
-  likedSongs: Set<number>;
-  onToggleLike: (songId: number) => void;
+  likedSongs: Set<string>;
+  onToggleLike: (songId: string) => void;
   onTogglePlayPause: () => void;
   onSeek: (time: number) => void;
   onVolumeChange: (volume: number) => void;

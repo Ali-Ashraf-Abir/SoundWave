@@ -3,7 +3,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import SongCard from '../SongCard';
 import QuickPlaylist from '../QuickPlaylist';
-import { recentlyPlayed, playlists } from '../../data/mockdata';
 import { Playlist, Song } from '../../types';
 import { api } from '@/lib/api';
 import { useSong } from '@/context/SongContext';

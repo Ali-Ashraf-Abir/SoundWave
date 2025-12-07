@@ -8,6 +8,7 @@ export interface Song {
   duration?: string;
   coverImage?: string | undefined;
   genre?: string;
+  color:string;
   releaseYear?: number;
   playCount?: number;
   audioFile?: string;
@@ -25,6 +26,7 @@ export interface Playlist {
   tags?: string[];
   isPublic: boolean;
   coverImage?: string;
+  color:string;
   songs?: PlaylistSong[];
   createdBy?: User;
   followers?: string[];

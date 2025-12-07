@@ -6,9 +6,10 @@ import { Playlist } from '../types';
 
 interface QuickPlaylistProps {
   playlist: Playlist;
+  onPlayListClick :(data:string | null)=>void;
 }
 
-const QuickPlaylist: React.FC<QuickPlaylistProps> = ({ playlist }) => {
+const QuickPlaylist: React.FC<QuickPlaylistProps> = ({ playlist,onPlayListClick }) => {
   return (
     <button
       className="

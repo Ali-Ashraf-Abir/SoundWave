@@ -30,7 +30,7 @@ export default function MySongsPage() {
     setLoading(true);
     try {
       const res = await api.get(`/songs?uploadedBy=${user._id}`);
-      setSongs(res?.songs as Song[]);
+      setSongs(res?.data as Song[]);
     } catch (e) {
       console.error("Failed to fetch songs:", e);
     }

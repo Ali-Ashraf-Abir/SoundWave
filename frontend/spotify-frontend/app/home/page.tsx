@@ -6,12 +6,13 @@ import UploadModal from '@/components/UploadModal';
 import HomeView from '@/components/views/HomeView';
 // import LibraryView from '@/components/views/LibraryView';
 // import SearchView from '@/components/views/SearchView';
-import { Song, UploadFormData, ViewType } from '@/types';
+import { Playlist, Song, UploadFormData, ViewType } from '@/types';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import MySongsPage from '@/components/views/MySongs';
 import { PlaylistsManager } from '@/components/playlist';
 import SearchView from '@/components/views/SearchView';
+import AllSongsPage from '@/components/AllSongs';
 
 const MusicApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('home');
@@ -25,7 +26,7 @@ const MusicApp: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  
+ 
   // New state for playlist management
   const [playlist, setPlaylist] = useState<Song[]>([]);
   const [currentSongIndex, setCurrentSongIndex] = useState<number>(-1);
@@ -346,6 +347,10 @@ const MusicApp: React.FC = () => {
             )}
             {currentView === 'library' && <PlaylistsManager onPlaySong={handlePlaySong} currentSong={currentSong}/>}
             {currentView === 'mysongs' && <MySongsPage />}
+            {currentView === 'allsongs' && <AllSongsPage
+              onPlaySong={handlePlaySong}
+              currentSong={currentSong}
+            />}
           </div>
         </div>
       </div>

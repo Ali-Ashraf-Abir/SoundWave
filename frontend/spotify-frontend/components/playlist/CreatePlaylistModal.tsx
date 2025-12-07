@@ -82,89 +82,143 @@ const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4 animate-fadeIn">
-      <div className="bg-elevated rounded-lg w-full max-w-md shadow-custom-xl animate-slideUp">
-        <div className="flex justify-between items-center p-6 border-b border-default">
-          <h2 className="text-2xl font-bold">Create Playlist</h2>
-          <button onClick={onClose} className="text-secondary hover:text-primary transition-colors">
-            <X size={24} />
+    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-3 sm:p-4 animate-fadeIn">
+      <div className="bg-elevated rounded-lg w-full max-w-md shadow-custom-xl animate-slideUp max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center p-4 sm:p-6 border-b border-default sticky top-0 bg-elevated z-10">
+          <h2 className="text-xl sm:text-2xl font-bold">Create Playlist</h2>
+          <button 
+            onClick={onClose} 
+            className="text-secondary hover:text-primary transition-colors p-1"
+            aria-label="Close modal"
+          >
+            <X size={20} className="sm:w-6 sm:h-6" />
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        {/* Content */}
+        <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+          {/* Error Message */}
           {error && (
-            <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-500 px-4 py-3 rounded">
+            <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-500 px-3 sm:px-4 py-2 sm:py-3 rounded text-sm">
               {error}
             </div>
           )}
 
-          <div className="flex flex-col items-center gap-4">
+          {/* Cover Image Upload */}
+          <div className="flex flex-col items-center gap-3 sm:gap-4">
             <div className="relative">
               {coverImagePreview ? (
-                <img src={coverImagePreview} alt="Cover" className="w-32 h-32 rounded-lg object-cover" />
+                <img 
+                  src={coverImagePreview} 
+                  alt="Cover" 
+                  className="w-24 h-24 sm:w-32 sm:h-32 rounded-lg object-cover" 
+                />
               ) : (
-                <div className="w-32 h-32 bg-tertiary rounded-lg flex items-center justify-center">
-                  <Music size={48} className="text-secondary" />
+                <div className="w-24 h-24 sm:w-32 sm:h-32 bg-tertiary rounded-lg flex items-center justify-center">
+                  <Music size={36} className="sm:w-12 sm:h-12 text-secondary" />
                 </div>
               )}
-              <label className="absolute bottom-2 right-2 bg-brand p-2 rounded-full cursor-pointer hover:bg-brand-hover transition-colors">
-                <Upload size={16} />
-                <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+              <label className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 bg-brand p-1.5 sm:p-2 rounded-full cursor-pointer hover:bg-brand-hover transition-colors shadow-lg">
+                <Upload size={14} className="sm:w-4 sm:h-4" />
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleImageChange} 
+                  className="hidden" 
+                />
               </label>
             </div>
+            <p className="text-xs sm:text-sm text-secondary text-center">
+              Tap to upload cover image
+            </p>
           </div>
 
+          {/* Playlist Name */}
           <div>
-            <label className="block text-sm font-medium mb-2">Playlist Name *</label>
+            <label className="block text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">
+              Playlist Name <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-3 rounded-lg bg-tertiary border border-default focus:border-brand outline-none transition-colors"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base rounded-lg bg-tertiary border border-default focus:border-brand outline-none transition-colors"
               placeholder="My Awesome Playlist"
+              maxLength={100}
             />
           </div>
 
+          {/* Description */}
           <div>
-            <label className="block text-sm font-medium mb-2">Description</label>
+            <label className="block text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">
+              Description
+            </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-3 rounded-lg bg-tertiary border border-default focus:border-brand outline-none transition-colors resize-none"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base rounded-lg bg-tertiary border border-default focus:border-brand outline-none transition-colors resize-none"
               rows={3}
               placeholder="Add an optional description"
+              maxLength={500}
             />
+            <p className="text-xs text-secondary mt-1">
+              {formData.description.length}/500
+            </p>
           </div>
 
+          {/* Tags */}
           <div>
-            <label className="block text-sm font-medium mb-2">Tags</label>
+            <label className="block text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">
+              Tags
+            </label>
             <input
               type="text"
               value={formData.tags}
               onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-              className="w-full px-4 py-3 rounded-lg bg-tertiary border border-default focus:border-brand outline-none transition-colors"
-              placeholder="rock, indie, chill (comma separated)"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base rounded-lg bg-tertiary border border-default focus:border-brand outline-none transition-colors"
+              placeholder="rock, indie, chill"
             />
+            <p className="text-xs text-secondary mt-1">
+              Separate tags with commas
+            </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Privacy Toggle */}
+          <div className="flex items-center justify-between gap-3 p-3 sm:p-4 bg-tertiary rounded-lg">
+            <div className="flex-1">
+              <p className="text-sm sm:text-base font-medium">Privacy</p>
+              <p className="text-xs text-secondary mt-0.5">
+                {formData.isPublic ? 'Anyone can see this playlist' : 'Only you can see this playlist'}
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => setFormData({ ...formData, isPublic: !formData.isPublic })}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors ${
-                formData.isPublic ? 'bg-brand text-white' : 'bg-tertiary text-secondary'
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full transition-colors text-sm sm:text-base font-medium ${
+                formData.isPublic ? 'bg-brand text-white' : 'bg-secondary text-primary'
               }`}
             >
-              {formData.isPublic ? <Globe size={16} /> : <Lock size={16} />}
-              {formData.isPublic ? 'Public' : 'Private'}
+              {formData.isPublic ? (
+                <>
+                  <Globe size={14} className="sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">Public</span>
+                </>
+              ) : (
+                <>
+                  <Lock size={14} className="sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">Private</span>
+                </>
+              )}
             </button>
           </div>
 
-          <div className="flex gap-3 pt-4">
+          {/* Action Buttons */}
+          <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-2 sm:pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-3 rounded-full bg-tertiary text-primary hover:bg-opacity-80 transition-colors"
+              className="w-full sm:flex-1 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base rounded-full bg-tertiary text-primary hover:bg-opacity-80 transition-colors font-medium"
             >
               Cancel
             </button>
@@ -172,9 +226,9 @@ const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
               type="button"
               onClick={handleSubmit}
               disabled={loading || !formData.name}
-              className="flex-1 px-6 py-3 rounded-full bg-brand hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold"
+              className="w-full sm:flex-1 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base rounded-full bg-brand hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold"
             >
-              {loading ? 'Creating...' : 'Create'}
+              {loading ? 'Creating...' : 'Create Playlist'}
             </button>
           </div>
         </div>

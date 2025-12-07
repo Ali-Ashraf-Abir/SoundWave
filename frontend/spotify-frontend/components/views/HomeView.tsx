@@ -10,6 +10,7 @@ import SongCardSkeleton from '../loader/SongCardSkeleton';
 import { useAuth } from '@/context/AuthContext';
 import { trendingCache, recentCache } from "../../lib/cache"
 import { playlistAPI } from '../playlist/PlaylistApi';
+import { PlaylistView } from '../playlist';
 
 interface HomeViewProps {
   onPlaySong: (song: Song, songList: Song[] | undefined) => void;
@@ -24,7 +25,8 @@ const HomeView: React.FC<HomeViewProps> = ({ onPlaySong, currentSong }) => {
   const [loadingRecentlyPlayed, setLoadingRecentlyPlayed] = useState<boolean>(false);
   const { user } = useAuth();
   const [loading, setLoading] = useState<boolean>(false)
-  const [playList,setPlaylists]=useState<Playlist[]>()
+  const [playList, setPlaylists] = useState<Playlist[]>()
+  const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null);
   // CACHE
   useEffect(() => {
     // Clear caches when newUpload changes
@@ -98,7 +100,17 @@ const HomeView: React.FC<HomeViewProps> = ({ onPlaySong, currentSong }) => {
   const handleTrendingSongClick = (song: Song) => {
     onPlaySong(song, trendingSongs); // Pass the entire list
   };
-
+  if (selectedPlaylist) {
+    return (
+      <PlaylistView
+        onPlaySong={onPlaySong}
+        currentSong={currentSong}
+        playlistId={selectedPlaylist}
+        userId={user?._id}
+        onBack={() => setSelectedPlaylist(null)}
+      />
+    );
+  }
 
   return (
     <>
@@ -107,7 +119,8 @@ const HomeView: React.FC<HomeViewProps> = ({ onPlaySong, currentSong }) => {
       {/* Quick Access Playlists */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
         {playList?.slice(0, 6).map((playlist) => (
-          <QuickPlaylist key={playlist.id} playlist={playlist} />
+          <div onClick={() => setSelectedPlaylist(playlist._id)}><QuickPlaylist onPlayListClick={setSelectedPlaylist} key={playlist.id} playlist={playlist} /></div>
+
         ))}
       </div>
 

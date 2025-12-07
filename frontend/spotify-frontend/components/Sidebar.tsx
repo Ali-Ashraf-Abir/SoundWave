@@ -69,6 +69,16 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, setShowU
           </button>
 
           <button
+            onClick={() => handleNavClick('allsongs')}
+            className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg mb-2 transition-all ${currentView === 'allsongs' ? 'bg-elevated text-primary' : 'text-secondary hover:text-primary'
+              }`}
+          >
+            <Search size={24} />
+            <span className="font-medium">All Songs</span>
+          </button>
+
+
+          <button
             onClick={() => handleNavClick('library')}
             className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg mb-6 transition-all ${currentView === 'library' ? 'bg-elevated text-primary' : 'text-secondary hover:text-primary'
               }`}

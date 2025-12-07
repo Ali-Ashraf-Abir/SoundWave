@@ -52,7 +52,7 @@ export interface UploadFormData {
   coverImage?: File | null;
 }
 
-export type ViewType = 'home' | 'search' | 'library'|'mysongs';
+export type ViewType = 'home' | 'search' | 'library'|'mysongs' | 'allsongs';
 
 export interface PlaylistFormData {
   name: string;

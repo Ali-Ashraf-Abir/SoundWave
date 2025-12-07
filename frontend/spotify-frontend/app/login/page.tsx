@@ -23,7 +23,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      router.push("/profile");      
+      router.push("/home");      
     } catch (err: any) {
       setError(err.message || "Invalid credentials. Please try again.");
       

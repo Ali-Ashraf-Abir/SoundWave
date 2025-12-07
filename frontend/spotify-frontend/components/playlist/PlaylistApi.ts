@@ -6,7 +6,7 @@ import { ApiResponse, Playlist } from "@/types";
 
 export const playlistAPI = {
   createPlaylist: (formData: FormData): Promise<ApiResponse<Playlist>> => 
-    api.post('/playlists', formData),
+    api.post('/playlists/myplaylist', formData),
   
   getMyPlaylists: (): Promise<ApiResponse<Playlist[]>> => 
     api.get('/playlists/myplaylist'),
